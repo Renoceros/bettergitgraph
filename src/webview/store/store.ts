@@ -112,6 +112,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
 
     set({ commits, branches, layout });
+    if (get().searchQuery) {
+      get().setSearchQuery(get().searchQuery);
+    }
   },
 
   recomputeLayout: () => {
@@ -128,6 +131,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
 
     set({ layout });
+    if (get().searchQuery) {
+      get().setSearchQuery(get().searchQuery);
+    }
   },
 
   selectCommit: (hash) => {
@@ -160,18 +166,34 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
 
-    const { commits } = get();
+    const { commits, branches, layout } = get();
     const matches = new Set<string>();
 
+    // Find any branches whose name matches query
+    const matchingBranchNames = new Set<string>();
+    for (const b of branches) {
+      if (b.name.toLowerCase().includes(trimmed)) {
+        matchingBranchNames.add(b.name.toLowerCase());
+      }
+    }
+
     for (const c of commits) {
-      if (
+      const layoutNode = layout?.nodeMap.get(c.hash);
+      const nodeBranch = layoutNode?.branchName?.toLowerCase() || '';
+
+      const matchesBranch =
+        (nodeBranch && nodeBranch.includes(trimmed)) ||
+        matchingBranchNames.has(nodeBranch);
+
+      const matchesDirect =
         c.subject.toLowerCase().includes(trimmed) ||
         c.author.toLowerCase().includes(trimmed) ||
         c.authorEmail.toLowerCase().includes(trimmed) ||
         c.shortHash.toLowerCase().includes(trimmed) ||
         c.hash.toLowerCase().includes(trimmed) ||
-        c.refs.some((r) => r.toLowerCase().includes(trimmed))
-      ) {
+        c.refs.some((r) => r.toLowerCase().includes(trimmed));
+
+      if (matchesDirect || matchesBranch) {
         matches.add(c.hash);
       }
     }
