@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { useAppStore } from '../../store/store';
 import {
   IconTree,
   IconTimeline,
@@ -25,6 +26,7 @@ export const BackgroundContextMenu: React.FC<BackgroundContextMenuProps> = ({
   onCenterHead,
   onClose,
 }) => {
+  const { remoteInfo, openRepoOnWeb } = useAppStore();
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -152,6 +154,28 @@ export const BackgroundContextMenu: React.FC<BackgroundContextMenuProps> = ({
         </span>
         <span>Center HEAD Commit</span>
       </div>
+
+      {remoteInfo && (
+        <>
+          <div style={{ height: 1, backgroundColor: 'var(--vscode-menu-separatorBackground, #3c3c3c)', margin: '4px 0' }} />
+          <div
+            role="menuitem"
+            onClick={() => {
+              openRepoOnWeb();
+              onClose();
+            }}
+            style={menuItemStyle}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--vscode-menu-selectionBackground, #04395e)')}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+          >
+            <span style={{ display: 'flex', alignItems: 'center' }}>🌐</span>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontWeight: 600 }}>Open Repository on Web</span>
+              <span style={{ fontSize: 10, opacity: 0.6 }}>{remoteInfo.webUrl}</span>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

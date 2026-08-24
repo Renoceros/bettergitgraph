@@ -11,6 +11,7 @@ type WebviewToHostMessage =
   | { type: 'REQUEST_COMMIT_FILES'; payload: { hash: string } }
   | { type: 'REQUEST_DIFF'; payload: { hash: string; filePath: string } }
   | { type: 'OPEN_DIFF'; payload: { hash: string; filePath: string } }
+  | { type: 'OPEN_EXTERNAL_URL'; payload: { url: string } }
   | { type: 'SEARCH_CHANGED_FILES'; payload: { query: string } }
   | { type: 'FETCH_ALL' }
   | { type: 'EXECUTE_OPERATION'; payload: GitOperation };
@@ -129,6 +130,17 @@ export class WebviewManager {
             break;
           }
 
+          case 'OPEN_EXTERNAL_URL': {
+            if (msg.payload.url) {
+              try {
+                await vscode.env.openExternal(vscode.Uri.parse(msg.payload.url));
+              } catch (e) {
+                console.error('[BetterGitGraph] Failed to open external URL:', e);
+              }
+            }
+            break;
+          }
+
           case 'EXECUTE_OPERATION': {
             const result = await this.executor.execute(msg.payload);
             await this.panel?.webview.postMessage({
@@ -185,13 +197,14 @@ export class WebviewManager {
 
   private async sendGraphData(maxCount?: number): Promise<void> {
     if (!this.panel) return;
-    const [graph, branches] = await Promise.all([
+    const [graph, branches, remoteInfo] = await Promise.all([
       this.gitData.getCommitGraph(maxCount !== undefined ? { maxCount } : undefined),
       this.gitData.getAllBranches(),
+      this.gitData.getRemoteRepoInfo(),
     ]);
     await this.panel.webview.postMessage({
       type: 'GRAPH_DATA',
-      payload: { commits: graph.commits, edges: graph.edges, branches },
+      payload: { commits: graph.commits, edges: graph.edges, branches, remoteInfo },
     });
   }
 

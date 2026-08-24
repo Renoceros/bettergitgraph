@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import type { LayoutNode } from '../GraphCanvas/dag-layout';
 import type { GitOperation } from '../../../extension/operation-executor';
+import { useAppStore } from '../../store/store';
 import {
   IconCheckout,
   IconBranch,
@@ -29,6 +30,18 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onSelectOperation,
   onClose,
 }) => {
+  const { remoteInfo, openCommitOnWeb, openBranchOnWeb, openPrOnWeb, openIssueOnWeb } = useAppStore();
+  const providerName =
+    remoteInfo?.provider === 'github'
+      ? 'GitHub'
+      : remoteInfo?.provider === 'gitlab'
+      ? 'GitLab'
+      : remoteInfo?.provider === 'bitbucket'
+      ? 'Bitbucket'
+      : remoteInfo?.provider === 'azure'
+      ? 'Azure'
+      : 'Remote';
+
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -180,6 +193,46 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       />
 
       <div style={{ height: 1, backgroundColor: 'var(--vscode-menu-separatorBackground, #3c3c3c)', margin: '4px 0' }} />
+
+      {remoteInfo && (
+        <>
+          <MenuItem
+            icon={<span>🌐</span>}
+            title={
+              node.nodeType === 'pr' && node.prNumber
+                ? `Open PR #${node.prNumber} on ${providerName}`
+                : node.nodeType === 'issue' && node.issueNumber
+                ? `Open Issue #${node.issueNumber} on ${providerName}`
+                : `Open Commit on ${providerName}`
+            }
+            beginnerSubtitle="View this revision in your web browser"
+            gitCommand={remoteInfo.webUrl}
+            beginnerMode={beginnerMode}
+            onClick={() => {
+              if (node.nodeType === 'pr' && node.prNumber) {
+                openPrOnWeb(node.prNumber);
+              } else if (node.nodeType === 'issue' && node.issueNumber) {
+                openIssueOnWeb(node.issueNumber);
+              } else {
+                openCommitOnWeb(node.hash);
+              }
+              onClose();
+            }}
+          />
+          <MenuItem
+            icon={<span>🌿</span>}
+            title={`Open Branch '${node.branchName}' on ${providerName}`}
+            beginnerSubtitle="View branch tree in your web browser"
+            gitCommand={`${remoteInfo.webUrl}/tree/${node.branchName}`}
+            beginnerMode={beginnerMode}
+            onClick={() => {
+              openBranchOnWeb(node.branchName);
+              onClose();
+            }}
+          />
+          <div style={{ height: 1, backgroundColor: 'var(--vscode-menu-separatorBackground, #3c3c3c)', margin: '4px 0' }} />
+        </>
+      )}
 
       <MenuItem
         icon={<IconCopy size={14} color="currentColor" />}

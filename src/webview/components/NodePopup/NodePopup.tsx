@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { LayoutNode } from '../GraphCanvas/dag-layout';
 import type { ChangedFile } from '../../../extension/git-data';
 import type { GitOperation } from '../../../extension/operation-executor';
+import { useAppStore } from '../../store/store';
 import { FileList } from '../CommitDetail/FileList';
 import {
   IconCheckout,
@@ -33,6 +34,7 @@ export const NodePopup: React.FC<NodePopupProps> = ({
   onExecuteOperation,
   onClose,
 }) => {
+  const { remoteInfo, openCommitOnWeb, openPrOnWeb, openIssueOnWeb } = useAppStore();
   const [copied, setCopied] = useState(false);
 
   const handleCopyHash = () => {
@@ -285,6 +287,34 @@ export const NodePopup: React.FC<NodePopupProps> = ({
             <IconReset size={12} color="#f14c4c" />
             <span>Reset Hard</span>
           </button>
+          {remoteInfo && (
+            <button
+              onClick={() => {
+                if (node.nodeType === 'pr' && node.prNumber) {
+                  openPrOnWeb(node.prNumber);
+                } else if (node.nodeType === 'issue' && node.issueNumber) {
+                  openIssueOnWeb(node.issueNumber);
+                } else {
+                  openCommitOnWeb(node.hash);
+                }
+              }}
+              title="Open in web browser"
+              style={{
+                ...actionBtnStyle,
+                color: '#4ec9b0',
+                borderColor: '#4ec9b0',
+                backgroundColor: 'rgba(78, 201, 176, 0.1)',
+              }}
+            >
+              <span>
+                {node.nodeType === 'pr' && node.prNumber
+                  ? `🌐 PR #${node.prNumber} ↗`
+                  : node.nodeType === 'issue' && node.issueNumber
+                  ? `🌐 Issue #${node.issueNumber} ↗`
+                  : `🌐 Open on Web ↗`}
+              </span>
+            </button>
+          )}
         </div>
       </div>
     </div>

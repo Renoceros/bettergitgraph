@@ -8,6 +8,7 @@ export const SearchBar: React.FC = () => {
   const {
     commits,
     branches,
+    remoteInfo,
     searchQuery,
     filteredHashes,
     viewMode,
@@ -21,11 +22,28 @@ export const SearchBar: React.FC = () => {
     setDateFormat,
     setBeginnerMode,
     setIsFetching,
+    openRepoOnWeb,
   } = useAppStore();
 
   const handleFetchAll = () => {
     setIsFetching(true);
     messageBus.send({ type: 'FETCH_ALL' });
+  };
+
+  const getProviderName = () => {
+    if (!remoteInfo) return 'Remote';
+    switch (remoteInfo.provider) {
+      case 'github':
+        return 'GitHub';
+      case 'gitlab':
+        return 'GitLab';
+      case 'bitbucket':
+        return 'Bitbucket';
+      case 'azure':
+        return 'Azure DevOps';
+      default:
+        return 'Remote';
+    }
   };
 
   const handleCycleDirection = () => {
@@ -89,10 +107,34 @@ export const SearchBar: React.FC = () => {
           <IconTree size={16} color="#4ec9b0" />
           <span>BetterGitGraph</span>
         </div>
-        <div style={{ display: 'flex', gap: 6, opacity: 0.7, fontSize: 11 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, opacity: 0.8, fontSize: 11 }}>
           <span>{commits.length} commits</span>
           <span>•</span>
           <span>{branches.length} branches</span>
+          {remoteInfo && (
+            <>
+              <span>•</span>
+              <button
+                onClick={openRepoOnWeb}
+                title={`Open remote repository on ${getProviderName()}: ${remoteInfo.webUrl}`}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid var(--vscode-button-secondaryBorder, #454545)',
+                  borderRadius: 4,
+                  padding: '2px 8px',
+                  color: 'var(--vscode-textLink-foreground, #4ec9b0)',
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  fontWeight: 500,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                🌐 {getProviderName()} ↗
+              </button>
+            </>
+          )}
         </div>
       </div>
 

@@ -50,6 +50,54 @@ export interface FetchResult {
   error?: string;
 }
 
+export interface RemoteRepoInfo {
+  name: string;
+  url: string;
+  webUrl: string;
+  provider: 'github' | 'gitlab' | 'bitbucket' | 'azure' | 'generic';
+}
+
+/**
+ * Converts Git remote URLs (SSH, HTTPS, git@) into browser-accessible web URLs.
+ */
+export function parseRemoteWebUrl(rawUrl: string): { webUrl: string; provider: RemoteRepoInfo['provider'] } | null {
+  if (!rawUrl || !rawUrl.trim()) return null;
+  const trimmed = rawUrl.trim();
+
+  let host = '';
+  let pathPart = '';
+  let provider: RemoteRepoInfo['provider'] = 'generic';
+
+  // 1. SSH format: git@github.com:User/Repo.git or user@host:path
+  const sshMatch = /^(?:[\w.-]+@)?([\w.-]+):(\/?[\w./-]+?)(?:\.git)?$/i.exec(trimmed);
+  if (sshMatch && !trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+    host = sshMatch[1]!;
+    pathPart = sshMatch[2]!.replace(/^\//, '');
+  } else {
+    // 2. HTTP/HTTPS format: https://github.com/User/Repo.git
+    try {
+      const parsed = new URL(trimmed);
+      host = parsed.hostname;
+      pathPart = parsed.pathname.replace(/^\//, '').replace(/\.git$/i, '');
+    } catch {
+      return null;
+    }
+  }
+
+  if (host.includes('github.com')) {
+    provider = 'github';
+  } else if (host.includes('gitlab.com') || host.includes('gitlab.')) {
+    provider = 'gitlab';
+  } else if (host.includes('bitbucket.org')) {
+    provider = 'bitbucket';
+  } else if (host.includes('dev.azure.com') || host.includes('visualstudio.com')) {
+    provider = 'azure';
+  }
+
+  const webUrl = `https://${host}/${pathPart}`;
+  return { webUrl, provider };
+}
+
 // ─── GitDataLayer ─────────────────────────────────────────────────────────────
 
 /**
@@ -297,6 +345,32 @@ export class GitDataLayer {
       return await this.git.raw(['show', '--format=', hash, '--', filePath]);
     } catch {
       return '';
+    }
+  }
+
+  /**
+   * Retrieves origin / remote repository information and web URL.
+   */
+  async getRemoteRepoInfo(): Promise<RemoteRepoInfo | null> {
+    try {
+      const remotes = await this.git.getRemotes(true);
+      if (!remotes || remotes.length === 0) return null;
+
+      const originRemote = remotes.find((r) => r.name === 'origin') ?? remotes[0];
+      if (!originRemote) return null;
+
+      const rawUrl = originRemote.refs.fetch || originRemote.refs.push || '';
+      const parsed = parseRemoteWebUrl(rawUrl);
+      if (!parsed) return null;
+
+      return {
+        name: originRemote.name,
+        url: rawUrl,
+        webUrl: parsed.webUrl,
+        provider: parsed.provider,
+      };
+    } catch {
+      return null;
     }
   }
 }

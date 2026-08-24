@@ -1,10 +1,10 @@
-import type { CommitNode, BranchInfo, ChangedFile, FetchResult } from '../../extension/git-data';
+import type { CommitNode, BranchInfo, ChangedFile, FetchResult, RemoteRepoInfo } from '../../extension/git-data';
 import { useAppStore } from './store';
 
 // ─── Message Definitions ───────────────────────────────────────────────────────
 
 export type HostToWebviewMessage =
-  | { type: 'GRAPH_DATA'; payload: { commits: CommitNode[]; branches: BranchInfo[] } }
+  | { type: 'GRAPH_DATA'; payload: { commits: CommitNode[]; branches: BranchInfo[]; remoteInfo?: RemoteRepoInfo | null } }
   | { type: 'COMMIT_FILES_RESULT'; payload: { hash: string; files: ChangedFile[] } }
   | { type: 'DIFF_RESULT'; payload: { hash: string; filePath: string; diff: string } }
   | { type: 'FETCH_COMPLETE'; payload: FetchResult }
@@ -18,6 +18,7 @@ export type WebviewToHostMessage =
   | { type: 'REQUEST_COMMIT_FILES'; payload: { hash: string } }
   | { type: 'REQUEST_DIFF'; payload: { hash: string; filePath: string } }
   | { type: 'OPEN_DIFF'; payload: { hash: string; filePath: string } }
+  | { type: 'OPEN_EXTERNAL_URL'; payload: { url: string } }
   | { type: 'SEARCH_CHANGED_FILES'; payload: { query: string } }
   | { type: 'FETCH_ALL' }
   | { type: 'EXECUTE_OPERATION'; payload: unknown };
@@ -69,7 +70,7 @@ class MessageBus {
 
     switch (message.type) {
       case 'GRAPH_DATA':
-        store.setGraphData(message.payload.commits, message.payload.branches);
+        store.setGraphData(message.payload.commits, message.payload.branches, message.payload.remoteInfo);
         break;
 
       case 'COMMIT_FILES_RESULT':

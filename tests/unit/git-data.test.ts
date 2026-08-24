@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import simpleGit from 'simple-git';
 import path from 'path';
 import fs from 'fs';
-import { GitDataLayer } from '../../src/extension/git-data';
+import { GitDataLayer, parseRemoteWebUrl } from '../../src/extension/git-data';
 
 const FIXTURE_REPO_PATH = path.resolve(__dirname, '../../test-fixtures/sample-repo');
 
@@ -112,5 +112,42 @@ describe('GitDataLayer', () => {
 
     const nonExistent = await gitData.findCommitsTouchingFile('non-existent-xyz-file.abc');
     expect(nonExistent).toEqual([]);
+  });
+
+  describe('parseRemoteWebUrl', () => {
+    it('parses GitHub SSH and HTTPS URLs', () => {
+      const ssh = parseRemoteWebUrl('git@github.com:Renoceros/bettergitgraph.git');
+      expect(ssh).toEqual({
+        webUrl: 'https://github.com/Renoceros/bettergitgraph',
+        provider: 'github',
+      });
+
+      const https = parseRemoteWebUrl('https://github.com/Renoceros/bettergitgraph.git');
+      expect(https).toEqual({
+        webUrl: 'https://github.com/Renoceros/bettergitgraph',
+        provider: 'github',
+      });
+    });
+
+    it('parses GitLab URLs', () => {
+      const gitlab = parseRemoteWebUrl('git@gitlab.com:org/subgroup/project.git');
+      expect(gitlab).toEqual({
+        webUrl: 'https://gitlab.com/org/subgroup/project',
+        provider: 'gitlab',
+      });
+    });
+
+    it('parses Bitbucket and Azure DevOps URLs', () => {
+      const bb = parseRemoteWebUrl('git@bitbucket.org:user/repo.git');
+      expect(bb).toEqual({
+        webUrl: 'https://bitbucket.org/user/repo',
+        provider: 'bitbucket',
+      });
+    });
+
+    it('returns null for empty or invalid remote URLs', () => {
+      expect(parseRemoteWebUrl('')).toBeNull();
+      expect(parseRemoteWebUrl('   ')).toBeNull();
+    });
   });
 });

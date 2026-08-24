@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { CommitNode, BranchInfo, ChangedFile, FetchResult } from '../../extension/git-data';
+import type { CommitNode, BranchInfo, ChangedFile, FetchResult, RemoteRepoInfo } from '../../extension/git-data';
 import type { GraphLayout, LayoutDirection, DateFormat } from '../components/GraphCanvas/dag-layout';
 import { DAGLayoutEngine } from '../components/GraphCanvas/dag-layout';
 import { BranchColorEngine } from '../../extension/color-engine';
@@ -27,6 +27,7 @@ export interface AppState {
   // Git data
   commits: CommitNode[];
   branches: BranchInfo[];
+  remoteInfo: RemoteRepoInfo | null;
   layout: GraphLayout | null;
   selectedHash: string | null;
   hoveredHash: string | null;
@@ -53,7 +54,7 @@ export interface AppState {
   lastFetchResult: FetchResult | null;
 
   // Actions
-  setGraphData: (commits: CommitNode[], branches: BranchInfo[]) => void;
+  setGraphData: (commits: CommitNode[], branches: BranchInfo[], remoteInfo?: RemoteRepoInfo | null) => void;
   selectCommit: (hash: string | null) => void;
   setHoveredCommit: (hash: string | null) => void;
   setHighlightedBranch: (branch: string | null) => void;
@@ -72,6 +73,12 @@ export interface AppState {
   fitToScreen: () => void;
   setIsFetching: (fetching: boolean, result?: FetchResult) => void;
   recomputeLayout: () => void;
+  openExternalUrl: (url: string) => void;
+  openRepoOnWeb: () => void;
+  openCommitOnWeb: (hash: string) => void;
+  openBranchOnWeb: (branch: string) => void;
+  openPrOnWeb: (prNumber: number) => void;
+  openIssueOnWeb: (issueNumber: number) => void;
 }
 
 // ─── Color & Layout Singletons ────────────────────────────────────────────────
@@ -84,6 +91,7 @@ let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 export const useAppStore = create<AppState>((set, get) => ({
   commits: [],
   branches: [],
+  remoteInfo: null,
   layout: null,
   selectedHash: null,
   hoveredHash: null,
@@ -103,7 +111,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   isFetching: false,
   lastFetchResult: null,
 
-  setGraphData: (commits, branches) => {
+  setGraphData: (commits, branches, remoteInfo) => {
     const { layoutDirection, viewMode, dateFormat, nodeRadius, theme } = get();
     colorEngine.setTheme(theme);
     const branchNames = branches.map((b) => b.name);
@@ -116,7 +124,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       nodeRadius,
     });
 
-    set({ commits, branches, layout });
+    set({
+      commits,
+      branches,
+      layout,
+      ...(remoteInfo !== undefined ? { remoteInfo } : {}),
+    });
     if (get().searchQuery) {
       get().setSearchQuery(get().searchQuery);
     }
@@ -402,4 +415,66 @@ export const useAppStore = create<AppState>((set, get) => ({
       isFetching,
       ...(lastFetchResult ? { lastFetchResult } : {}),
     }),
+
+  openExternalUrl: (url: string) => {
+    if (!url) return;
+    messageBus.send({ type: 'OPEN_EXTERNAL_URL', payload: { url } });
+  },
+
+  openRepoOnWeb: () => {
+    const { remoteInfo } = get();
+    if (remoteInfo?.webUrl) {
+      get().openExternalUrl(remoteInfo.webUrl);
+    }
+  },
+
+  openCommitOnWeb: (hash: string) => {
+    const { remoteInfo } = get();
+    if (!remoteInfo?.webUrl || !hash) return;
+    const isGitLab = remoteInfo.provider === 'gitlab';
+    const isBitbucket = remoteInfo.provider === 'bitbucket';
+    const url = isGitLab
+      ? `${remoteInfo.webUrl}/-/commit/${hash}`
+      : isBitbucket
+      ? `${remoteInfo.webUrl}/commits/${hash}`
+      : `${remoteInfo.webUrl}/commit/${hash}`;
+    get().openExternalUrl(url);
+  },
+
+  openBranchOnWeb: (branch: string) => {
+    const { remoteInfo } = get();
+    if (!remoteInfo?.webUrl || !branch) return;
+    const cleanBranch = branch.replace(/^origin\//, '');
+    const isGitLab = remoteInfo.provider === 'gitlab';
+    const isBitbucket = remoteInfo.provider === 'bitbucket';
+    const url = isGitLab
+      ? `${remoteInfo.webUrl}/-/tree/${cleanBranch}`
+      : isBitbucket
+      ? `${remoteInfo.webUrl}/branch/${cleanBranch}`
+      : `${remoteInfo.webUrl}/tree/${cleanBranch}`;
+    get().openExternalUrl(url);
+  },
+
+  openPrOnWeb: (prNumber: number) => {
+    const { remoteInfo } = get();
+    if (!remoteInfo?.webUrl || !prNumber) return;
+    const isGitLab = remoteInfo.provider === 'gitlab';
+    const isBitbucket = remoteInfo.provider === 'bitbucket';
+    const url = isGitLab
+      ? `${remoteInfo.webUrl}/-/merge_requests/${prNumber}`
+      : isBitbucket
+      ? `${remoteInfo.webUrl}/pull-requests/${prNumber}`
+      : `${remoteInfo.webUrl}/pull/${prNumber}`;
+    get().openExternalUrl(url);
+  },
+
+  openIssueOnWeb: (issueNumber: number) => {
+    const { remoteInfo } = get();
+    if (!remoteInfo?.webUrl || !issueNumber) return;
+    const isGitLab = remoteInfo.provider === 'gitlab';
+    const url = isGitLab
+      ? `${remoteInfo.webUrl}/-/issues/${issueNumber}`
+      : `${remoteInfo.webUrl}/issues/${issueNumber}`;
+    get().openExternalUrl(url);
+  },
 }));
