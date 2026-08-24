@@ -2,7 +2,7 @@
   "name": "bettergitgraph",
   "displayName": "BetterGitGraph",
   "description": "Beautiful, interactive git graph for VS Code — built for everyone.",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "publisher": "Renoceros",
   "repository": {
     "type": "git",
@@ -42,8 +42,8 @@
     "keybindings": [
       {
         "command": "bettergitgraph.open",
-        "key": "ctrl+shift+g g",
-        "mac": "cmd+shift+g g",
+        "key": "ctrl+alt+g",
+        "mac": "cmd+ctrl+g",
         "when": "!inputFocus"
       }
     ],

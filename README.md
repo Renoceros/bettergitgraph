@@ -33,7 +33,7 @@ Most free Git extensions render history in flat, rigid table rows with unpredict
 
 | Command | Keybinding (Mac) | Keybinding (Win/Linux) | Description |
 |---|---|---|---|
-| `BetterGitGraph: Open Graph` | `Cmd+Shift+G G` | `Ctrl+Shift+G G` | Opens the full-screen BetterGitGraph visual panel |
+| `BetterGitGraph: Open Graph` | `Cmd+Ctrl+G` | `Ctrl+Alt+G` | Opens the full-screen BetterGitGraph visual panel |
 | `BetterGitGraph: Fetch All Remotes` | — | — | Executes `git fetch --all --prune` and auto-refreshes |
 
 ---

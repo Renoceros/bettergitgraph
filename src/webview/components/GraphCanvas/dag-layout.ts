@@ -87,7 +87,7 @@ export function formatRelativeTime(date: Date): string {
 export class DAGLayoutEngine {
   private readonly defaultOptions: Required<LayoutOptions> = {
     direction: 'TB',
-    viewMode: 'topo',
+    viewMode: 'temporal',
     nodeRadius: 8,
     nodeSpacingX: 52,
     nodeSpacingY: 48,

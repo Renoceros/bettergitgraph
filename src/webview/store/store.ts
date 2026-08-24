@@ -84,7 +84,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   filteredHashes: null,
   authorFilter: [],
   branchFilter: [],
-  viewMode: 'topo',
+  viewMode: 'temporal',
   beginnerMode: true,
   layoutDirection: 'TB',
   nodeRadius: 8,
