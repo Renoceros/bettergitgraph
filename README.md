@@ -124,6 +124,7 @@ Configure BetterGitGraph via VS Code Settings (`Cmd+,` / `Ctrl+,` $\rightarrow$ 
 |---|---|---|---|
 | `bettergitgraph.layoutDirection` | `string` (`"TB" \| "BT" \| "LR" \| "RL"`) | `"TB"` | Graph flow direction: Top-to-Bottom, Bottom-to-Top, Left-to-Right, or Right-to-Left. |
 | `bettergitgraph.dateFormat` | `string` (`"local" \| "relative" \| "iso"`) | `"local"` | Format for commit timestamps: Local Time (`19:45 GMT+8`), Relative (`2h ago`), or ISO. |
+| `bettergitgraph.autoFetchInterval` | `number` | `0` | Interval in minutes for background auto-fetching (`0` = disabled, `1`, `5`, `15`, `30`, `60`). |
 | `bettergitgraph.beginnerMode` | `boolean` | `true` | Show plain-English explanations and confirmation dialogs. |
 | `bettergitgraph.maxCommits` | `number` | `2000` | Maximum number of commits loaded into the graph. |
 | `bettergitgraph.nodeSize` | `number` | `12` | Radius of commit nodes in pixels. |

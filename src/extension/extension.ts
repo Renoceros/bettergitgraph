@@ -54,6 +54,47 @@ export function activate(context: vscode.ExtensionContext): void {
   });
   context.subscriptions.push(watcher);
 
+  // Background Auto-Fetch Timer
+  let autoFetchTimer: NodeJS.Timeout | undefined;
+
+  const updateAutoFetchTimer = () => {
+    if (autoFetchTimer) {
+      clearInterval(autoFetchTimer);
+      autoFetchTimer = undefined;
+    }
+
+    const config = vscode.workspace.getConfiguration('bettergitgraph');
+    const intervalMinutes = config.get<number>('autoFetchInterval', 0);
+
+    if (intervalMinutes > 0) {
+      const intervalMs = intervalMinutes * 60 * 1000;
+      autoFetchTimer = setInterval(async () => {
+        try {
+          await gitData.fetchAll();
+          await webviewManager?.refresh();
+          branchExplorer.refresh();
+        } catch (e) {
+          console.error('[BetterGitGraph] Auto-fetch error:', e);
+        }
+      }, intervalMs);
+    }
+  };
+
+  updateAutoFetchTimer();
+
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration('bettergitgraph.autoFetchInterval')) {
+        updateAutoFetchTimer();
+      }
+    }),
+    {
+      dispose: () => {
+        if (autoFetchTimer) clearInterval(autoFetchTimer);
+      },
+    }
+  );
+
   console.warn('[BetterGitGraph] Extension activated.');
 }
 

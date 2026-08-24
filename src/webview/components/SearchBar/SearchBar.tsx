@@ -14,12 +14,14 @@ export const SearchBar: React.FC = () => {
     viewMode,
     layoutDirection,
     dateFormat,
+    autoFetchInterval,
     beginnerMode,
     isFetching,
     setSearchQuery,
     setViewMode,
     setLayoutDirection,
     setDateFormat,
+    cycleAutoFetchInterval,
     setBeginnerMode,
     setIsFetching,
     openRepoOnWeb,
@@ -28,6 +30,12 @@ export const SearchBar: React.FC = () => {
   const handleFetchAll = () => {
     setIsFetching(true);
     messageBus.send({ type: 'FETCH_ALL' });
+  };
+
+  const getAutoFetchLabel = (interval: number): string => {
+    if (interval <= 0) return 'Auto: Off';
+    if (interval >= 60) return `Auto: ${Math.floor(interval / 60)}h`;
+    return `Auto: ${interval}m`;
   };
 
   const getProviderName = () => {
@@ -239,6 +247,20 @@ export const SearchBar: React.FC = () => {
         >
           <IconFetch size={13} />
           {isFetching ? 'Fetching…' : 'Fetch All'}
+        </button>
+
+        {/* Auto-Fetch Interval Toggle */}
+        <button
+          onClick={cycleAutoFetchInterval}
+          title="Click to cycle background auto-fetch interval: Off -> 1m -> 5m -> 10m -> 15m -> 30m -> 60m"
+          style={{
+            ...secondaryBtnStyle,
+            backgroundColor: autoFetchInterval > 0 ? 'rgba(78, 201, 176, 0.15)' : undefined,
+            borderColor: autoFetchInterval > 0 ? '#4ec9b0' : undefined,
+            color: autoFetchInterval > 0 ? '#4ec9b0' : undefined,
+          }}
+        >
+          {getAutoFetchLabel(autoFetchInterval)}
         </button>
 
         {/* Direction Cycle Toggle */}

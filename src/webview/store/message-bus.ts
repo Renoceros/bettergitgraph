@@ -4,7 +4,8 @@ import { useAppStore } from './store';
 // ─── Message Definitions ───────────────────────────────────────────────────────
 
 export type HostToWebviewMessage =
-  | { type: 'GRAPH_DATA'; payload: { commits: CommitNode[]; branches: BranchInfo[]; remoteInfo?: RemoteRepoInfo | null } }
+  | { type: 'GRAPH_DATA'; payload: { commits: CommitNode[]; branches: BranchInfo[]; remoteInfo?: RemoteRepoInfo | null; autoFetchInterval?: number } }
+  | { type: 'AUTO_FETCH_INTERVAL_CHANGE'; payload: { interval: number } }
   | { type: 'COMMIT_FILES_RESULT'; payload: { hash: string; files: ChangedFile[] } }
   | { type: 'DIFF_RESULT'; payload: { hash: string; filePath: string; diff: string } }
   | { type: 'FETCH_COMPLETE'; payload: FetchResult }
@@ -19,6 +20,7 @@ export type WebviewToHostMessage =
   | { type: 'REQUEST_DIFF'; payload: { hash: string; filePath: string } }
   | { type: 'OPEN_DIFF'; payload: { hash: string; filePath: string } }
   | { type: 'OPEN_EXTERNAL_URL'; payload: { url: string } }
+  | { type: 'SET_AUTO_FETCH_INTERVAL'; payload: { interval: number } }
   | { type: 'SEARCH_CHANGED_FILES'; payload: { query: string } }
   | { type: 'FETCH_ALL' }
   | { type: 'EXECUTE_OPERATION'; payload: unknown };
@@ -70,7 +72,16 @@ class MessageBus {
 
     switch (message.type) {
       case 'GRAPH_DATA':
-        store.setGraphData(message.payload.commits, message.payload.branches, message.payload.remoteInfo);
+        store.setGraphData(
+          message.payload.commits,
+          message.payload.branches,
+          message.payload.remoteInfo,
+          message.payload.autoFetchInterval
+        );
+        break;
+
+      case 'AUTO_FETCH_INTERVAL_CHANGE':
+        store.setAutoFetchInterval(message.payload.interval);
         break;
 
       case 'COMMIT_FILES_RESULT':

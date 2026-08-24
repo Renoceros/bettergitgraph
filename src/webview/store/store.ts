@@ -46,6 +46,7 @@ export interface AppState {
   viewMode: 'topo' | 'temporal';
   layoutDirection: LayoutDirection;
   dateFormat: DateFormat;
+  autoFetchInterval: number; // 0 = off, minutes
   beginnerMode: boolean;
   nodeRadius: number;
   theme: 'dark' | 'light' | 'high-contrast';
@@ -54,7 +55,7 @@ export interface AppState {
   lastFetchResult: FetchResult | null;
 
   // Actions
-  setGraphData: (commits: CommitNode[], branches: BranchInfo[], remoteInfo?: RemoteRepoInfo | null) => void;
+  setGraphData: (commits: CommitNode[], branches: BranchInfo[], remoteInfo?: RemoteRepoInfo | null, autoFetchInterval?: number) => void;
   selectCommit: (hash: string | null) => void;
   setHoveredCommit: (hash: string | null) => void;
   setHighlightedBranch: (branch: string | null) => void;
@@ -66,6 +67,8 @@ export interface AppState {
   setViewMode: (mode: 'topo' | 'temporal') => void;
   setLayoutDirection: (dir: LayoutDirection) => void;
   setDateFormat: (format: DateFormat) => void;
+  setAutoFetchInterval: (interval: number) => void;
+  cycleAutoFetchInterval: () => void;
   setBeginnerMode: (enabled: boolean) => void;
   setTheme: (theme: 'dark' | 'light' | 'high-contrast') => void;
   setViewport: (updater: (prev: Viewport) => Viewport) => void;
@@ -105,6 +108,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   viewMode: 'temporal',
   layoutDirection: 'TB',
   dateFormat: 'local',
+  autoFetchInterval: 0,
   beginnerMode: true,
   nodeRadius: 8,
   theme: 'dark',
@@ -112,7 +116,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   isFetching: false,
   lastFetchResult: null,
 
-  setGraphData: (commits, branches, remoteInfo) => {
+  setGraphData: (commits, branches, remoteInfo, autoFetchInterval) => {
     const { layoutDirection, viewMode, dateFormat, nodeRadius, theme } = get();
     colorEngine.setTheme(theme);
     const branchNames = branches.map((b) => b.name);
@@ -130,6 +134,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       branches,
       layout,
       ...(remoteInfo !== undefined ? { remoteInfo } : {}),
+      ...(autoFetchInterval !== undefined ? { autoFetchInterval } : {}),
     });
     if (get().searchQuery) {
       get().setSearchQuery(get().searchQuery);
@@ -398,6 +403,19 @@ export const useAppStore = create<AppState>((set, get) => ({
   setDateFormat: (dateFormat) => {
     set({ dateFormat });
     get().recomputeLayout();
+  },
+
+  setAutoFetchInterval: (interval: number) => {
+    set({ autoFetchInterval: interval });
+  },
+
+  cycleAutoFetchInterval: () => {
+    const intervals = [0, 1, 5, 10, 15, 30, 60];
+    const current = get().autoFetchInterval;
+    const currentIndex = intervals.indexOf(current);
+    const nextInterval = intervals[(currentIndex + 1) % intervals.length]!;
+    set({ autoFetchInterval: nextInterval });
+    messageBus.send({ type: 'SET_AUTO_FETCH_INTERVAL', payload: { interval: nextInterval } });
   },
 
   setBeginnerMode: (beginnerMode) => set({ beginnerMode }),

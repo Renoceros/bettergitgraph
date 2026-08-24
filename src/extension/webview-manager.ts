@@ -12,6 +12,7 @@ type WebviewToHostMessage =
   | { type: 'REQUEST_DIFF'; payload: { hash: string; filePath: string } }
   | { type: 'OPEN_DIFF'; payload: { hash: string; filePath: string } }
   | { type: 'OPEN_EXTERNAL_URL'; payload: { url: string } }
+  | { type: 'SET_AUTO_FETCH_INTERVAL'; payload: { interval: number } }
   | { type: 'SEARCH_CHANGED_FILES'; payload: { query: string } }
   | { type: 'FETCH_ALL' }
   | { type: 'EXECUTE_OPERATION'; payload: GitOperation };
@@ -141,6 +142,16 @@ export class WebviewManager {
             break;
           }
 
+          case 'SET_AUTO_FETCH_INTERVAL': {
+            try {
+              const config = vscode.workspace.getConfiguration('bettergitgraph');
+              await config.update('autoFetchInterval', msg.payload.interval, vscode.ConfigurationTarget.Global);
+            } catch (e) {
+              console.error('[BetterGitGraph] Failed to update autoFetchInterval:', e);
+            }
+            break;
+          }
+
           case 'EXECUTE_OPERATION': {
             const result = await this.executor.execute(msg.payload);
             await this.panel?.webview.postMessage({
@@ -156,6 +167,20 @@ export class WebviewManager {
             }
             break;
           }
+        }
+      },
+      undefined,
+      this.context.subscriptions
+    );
+
+    vscode.workspace.onDidChangeConfiguration(
+      (e) => {
+        if (e.affectsConfiguration('bettergitgraph.autoFetchInterval')) {
+          const interval = vscode.workspace.getConfiguration('bettergitgraph').get<number>('autoFetchInterval', 0);
+          this.panel?.webview.postMessage({
+            type: 'AUTO_FETCH_INTERVAL_CHANGE',
+            payload: { interval },
+          });
         }
       },
       undefined,
@@ -202,9 +227,10 @@ export class WebviewManager {
       this.gitData.getAllBranches(),
       this.gitData.getRemoteRepoInfo(),
     ]);
+    const autoFetchInterval = vscode.workspace.getConfiguration('bettergitgraph').get<number>('autoFetchInterval', 0);
     await this.panel.webview.postMessage({
       type: 'GRAPH_DATA',
-      payload: { commits: graph.commits, edges: graph.edges, branches, remoteInfo },
+      payload: { commits: graph.commits, edges: graph.edges, branches, remoteInfo, autoFetchInterval },
     });
   }
 
