@@ -5,6 +5,12 @@ All notable changes to BetterGitGraph will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.5] - 2026-08-24
+
+### Fixed
+- **SVG Export Overflow Fix**: Added explicit `<clipPath>` wrapping and accurate character metric truncation to ensure commit messages and author metadata never bleed or overflow outside plaque boxes in exported `.svg` maps.
+- **Plaque Width Breathing Room**: Increased plaque width to `280px` for improved typography and readability.
+
 ## [1.2.4] - 2026-08-24
 
 ### Added

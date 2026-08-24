@@ -272,7 +272,7 @@ export class DAGLayoutEngine {
       }
 
       // Compute Adaptive Plaque Tag Card Geometry
-      const plaqueWidth = 260;
+      const plaqueWidth = 280;
       const plaqueHeight = 44;
       const plaque = this.computePlaqueGeometry(x, y, opts.nodeRadius, plaqueWidth, plaqueHeight, opts.direction, i);
 
@@ -431,7 +431,7 @@ export class DAGLayoutEngine {
       }
 
       // Compute Adaptive Plaque Tag Card Geometry
-      const plaqueWidth = 260;
+      const plaqueWidth = 280;
       const plaqueHeight = 44;
       const plaque = this.computePlaqueGeometry(x, y, opts.nodeRadius, plaqueWidth, plaqueHeight, opts.direction, rowIndex);
 

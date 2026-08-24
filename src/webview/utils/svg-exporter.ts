@@ -7,6 +7,7 @@ export interface SvgExportOptions {
 
 /**
  * Generates a standalone, valid XML SVG string from a computed GraphLayout.
+ * Protects against text overflow using explicit clip paths and accurate font metric truncation.
  */
 export function exportGraphToSvg(
   layout: GraphLayout,
@@ -24,7 +25,6 @@ export function exportGraphToSvg(
   const height = Math.max(600, maxY - minY);
 
   const bgColor = isDark ? '#1e1e1e' : '#ffffff';
-  const textColor = isDark ? '#cccccc' : '#222222';
   const titleColor = isDark ? '#ffffff' : '#000000';
   const subtextColor = isDark ? '#888888' : '#666666';
 
@@ -33,11 +33,23 @@ export function exportGraphToSvg(
   <defs>
     <style>
       .bg { fill: ${bgColor}; }
-      .text-title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 12px; font-weight: bold; fill: ${titleColor}; }
-      .text-sub { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 11px; fill: ${subtextColor}; }
+      .text-title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: bold; fill: ${titleColor}; }
+      .text-sub { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 10px; fill: ${subtextColor}; }
       .text-badge { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 9px; font-weight: bold; }
     </style>
-  </defs>
+`;
+
+  // Define clipPaths for all plaques to physically prevent any overflow
+  for (const node of layout.nodes) {
+    if (node.plaque) {
+      const p = node.plaque;
+      svg += `    <clipPath id="clip-${node.shortHash}">\n`;
+      svg += `      <rect x="${p.x}" y="${p.y}" width="${p.width}" height="${p.height}" rx="6" />\n`;
+      svg += `    </clipPath>\n`;
+    }
+  }
+
+  svg += `  </defs>
 
   <!-- Background -->
   <rect x="${minX}" y="${minY}" width="${width}" height="${height}" class="bg" />
@@ -69,37 +81,50 @@ export function exportGraphToSvg(
   }
   svg += `  </g>\n\n`;
 
-  // 2. Render Plaques
+  // 2. Render Plaques (encapsulated with clipPaths)
   svg += `  <!-- Plaques -->\n  <g id="plaques">\n`;
   for (const node of layout.nodes) {
     if (!node.plaque) continue;
     const { plaque } = node;
 
-    // Connector line from node to plaque
+    // Connector stem line from node to plaque
     svg += `    <line x1="${node.x}" y1="${node.y}" x2="${plaque.x}" y2="${plaque.y + plaque.height / 2}" stroke="${node.branchColor}" stroke-width="1.5" stroke-dasharray="2,2" opacity="0.6" />\n`;
 
-    // Plaque background container
-    const plaqueBg = isDark ? '#252526' : '#f3f4f6';
-    const plaqueBorder = node.isMainBranch ? '#4ec9b0' : node.branchColor;
+    // Group wrapped in clipPath
+    svg += `    <g clip-path="url(#clip-${node.shortHash})">\n`;
 
-    svg += `    <rect x="${plaque.x}" y="${plaque.y}" width="${plaque.width}" height="${plaque.height}" rx="6" fill="${plaqueBg}" stroke="${plaqueBorder}" stroke-width="1.2" opacity="0.95" />\n`;
+    // Plaque background container
+    const plaqueBg = isDark ? '#252526' : '#f8f9fa';
+    const plaqueBorder = node.isMainBranch ? '#4ec9b0' : (isDark ? '#3c3c3c' : '#d0d7de');
+
+    svg += `      <rect x="${plaque.x}" y="${plaque.y}" width="${plaque.width}" height="${plaque.height}" rx="6" fill="${plaqueBg}" stroke="${plaqueBorder}" stroke-width="1.2" />\n`;
 
     // Badge
     const badgeText = node.nodeType.toUpperCase();
-    const badgeBg = node.isMainBranch ? '#144234' : '#1e3a5f';
-    const badgeFg = node.isMainBranch ? '#34d399' : '#60a5fa';
+    const badgeBg = node.isMainBranch ? '#144234' : (isDark ? '#1e3a5f' : '#dbeafe');
+    const badgeFg = node.isMainBranch ? '#34d399' : (isDark ? '#60a5fa' : '#1e40af');
+    const badgeWidth = badgeText.length * 6 + 16;
 
-    svg += `    <rect x="${plaque.x + 8}" y="${plaque.y + 6}" width="54" height="16" rx="3" fill="${badgeBg}" />\n`;
-    svg += `    <text x="${plaque.x + 35}" y="${plaque.y + 18}" text-anchor="middle" class="text-badge" fill="${badgeFg}">${escapeXml(badgeText)}</text>\n`;
+    svg += `      <rect x="${plaque.x + 8}" y="${plaque.y + 6}" width="${badgeWidth}" height="16" rx="3" fill="${badgeBg}" />\n`;
+    svg += `      <text x="${plaque.x + 8 + badgeWidth / 2}" y="${plaque.y + 18}" text-anchor="middle" class="text-badge" fill="${badgeFg}">${escapeXml(badgeText)}</text>\n`;
 
-    // Title / Subject
-    const maxSubjectLen = 42;
-    const subject = node.subject.length > maxSubjectLen ? `${node.subject.slice(0, maxSubjectLen)}…` : node.subject;
-    svg += `    <text x="${plaque.x + 70}" y="${plaque.y + 18}" class="text-title">${escapeXml(subject)}</text>\n`;
+    // Title / Subject (carefully truncated to fit within remaining plaque width)
+    const titleX = plaque.x + 8 + badgeWidth + 6;
+    const availableTitleWidth = plaque.width - (titleX - plaque.x) - 8;
+    const maxSubjectChars = Math.max(12, Math.floor(availableTitleWidth / 7.2));
+    const truncatedSubject = truncateText(node.subject, maxSubjectChars);
 
-    // Author & Timestamp
+    svg += `      <text x="${titleX}" y="${plaque.y + 18}" class="text-title">${escapeXml(truncatedSubject)}</text>\n`;
+
+    // Author & Timestamp (carefully truncated to fit within plaque width)
+    const availableSubWidth = plaque.width - 16;
+    const maxSubChars = Math.max(20, Math.floor(availableSubWidth / 6.2));
     const subText = `${node.author} • ${node.formattedDate || node.relativeTime}`;
-    svg += `    <text x="${plaque.x + 70}" y="${plaque.y + 34}" class="text-sub">${escapeXml(subText)}</text>\n`;
+    const truncatedSub = truncateText(subText, maxSubChars);
+
+    svg += `      <text x="${plaque.x + 8}" y="${plaque.y + 34}" class="text-sub">${escapeXml(truncatedSub)}</text>\n`;
+
+    svg += `    </g>\n`;
   }
   svg += `  </g>\n\n`;
 
@@ -125,6 +150,15 @@ export function exportGraphToSvg(
 
   svg += `</svg>`;
   return svg;
+}
+
+/**
+ * Truncates text with an ellipsis if it exceeds maxChars.
+ */
+function truncateText(text: string, maxChars: number): string {
+  if (!text) return '';
+  if (text.length <= maxChars) return text;
+  return `${text.slice(0, maxChars - 1)}…`;
 }
 
 /**
