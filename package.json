@@ -2,7 +2,7 @@
   "name": "bettergitgraph",
   "displayName": "BetterGitGraph",
   "description": "Beautiful, interactive git graph for VS Code — built for everyone.",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "publisher": "Renoceros",
   "repository": {
     "type": "git",
@@ -24,6 +24,8 @@
   ],
   "icon": "resources/icon.png",
   "activationEvents": [
+    "onCommand:bettergitgraph.open",
+    "onCommand:bettergitgraph.fetchAll",
     "workspaceContains:.git"
   ],
   "main": "./dist/extension.js",
@@ -36,15 +38,15 @@
       },
       {
         "command": "bettergitgraph.fetchAll",
-        "title": "BetterGitGraph: Fetch All Remotes"
+        "title": "BetterGitGraph: Fetch All Remotes",
+        "icon": "$(cloud-download)"
       }
     ],
     "keybindings": [
       {
         "command": "bettergitgraph.open",
         "key": "ctrl+alt+g",
-        "mac": "cmd+ctrl+g",
-        "when": "!inputFocus"
+        "mac": "cmd+ctrl+g"
       }
     ],
     "views": {
@@ -89,8 +91,27 @@
     "menus": {
       "commandPalette": [
         {
+          "command": "bettergitgraph.open"
+        },
+        {
+          "command": "bettergitgraph.fetchAll"
+        }
+      ],
+      "editor/title": [
+        {
           "command": "bettergitgraph.open",
+          "group": "navigation",
           "when": "gitOpenRepositoryCount > 0"
+        }
+      ],
+      "scm/title": [
+        {
+          "command": "bettergitgraph.open",
+          "group": "navigation"
+        },
+        {
+          "command": "bettergitgraph.fetchAll",
+          "group": "navigation"
         }
       ]
     }
