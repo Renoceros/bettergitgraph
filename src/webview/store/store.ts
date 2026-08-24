@@ -28,6 +28,7 @@ export interface AppState {
   commits: CommitNode[];
   branches: BranchInfo[];
   remoteInfo: RemoteRepoInfo | null;
+  repoName: string;
   layout: GraphLayout | null;
   selectedHash: string | null;
   hoveredHash: string | null;
@@ -55,7 +56,7 @@ export interface AppState {
   lastFetchResult: FetchResult | null;
 
   // Actions
-  setGraphData: (commits: CommitNode[], branches: BranchInfo[], remoteInfo?: RemoteRepoInfo | null, autoFetchInterval?: number) => void;
+  setGraphData: (commits: CommitNode[], branches: BranchInfo[], remoteInfo?: RemoteRepoInfo | null, autoFetchInterval?: number, repoName?: string) => void;
   selectCommit: (hash: string | null) => void;
   setHoveredCommit: (hash: string | null) => void;
   setHighlightedBranch: (branch: string | null) => void;
@@ -96,6 +97,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   commits: [],
   branches: [],
   remoteInfo: null,
+  repoName: 'Repository',
   layout: null,
   selectedHash: null,
   hoveredHash: null,
@@ -116,7 +118,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   isFetching: false,
   lastFetchResult: null,
 
-  setGraphData: (commits, branches, remoteInfo, autoFetchInterval) => {
+  setGraphData: (commits, branches, remoteInfo, autoFetchInterval, repoName) => {
     const { layoutDirection, viewMode, dateFormat, nodeRadius, theme } = get();
     colorEngine.setTheme(theme);
     const branchNames = branches.map((b) => b.name);
@@ -135,6 +137,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       layout,
       ...(remoteInfo !== undefined ? { remoteInfo } : {}),
       ...(autoFetchInterval !== undefined ? { autoFetchInterval } : {}),
+      ...(repoName ? { repoName } : {}),
     });
     if (get().searchQuery) {
       get().setSearchQuery(get().searchQuery);

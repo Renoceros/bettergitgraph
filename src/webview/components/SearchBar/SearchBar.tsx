@@ -9,6 +9,7 @@ export const SearchBar: React.FC = () => {
     commits,
     branches,
     remoteInfo,
+    repoName,
     searchQuery,
     filteredHashes,
     viewMode,
@@ -109,82 +110,67 @@ export const SearchBar: React.FC = () => {
         flexShrink: 0,
       }}
     >
-      {/* Brand & Stats */}
+      {/* Brand: Repository Name with Origin Repo Link */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 'bold', fontSize: 13 }}>
+        <button
+          onClick={remoteInfo ? openRepoOnWeb : undefined}
+          title={remoteInfo ? `Open ${repoName} on ${getProviderName()}: ${remoteInfo.webUrl}` : repoName}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontWeight: 'bold',
+            fontSize: 13,
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--vscode-foreground, #cccccc)',
+            cursor: remoteInfo ? 'pointer' : 'default',
+            padding: '4px 8px',
+            borderRadius: 4,
+            transition: 'background-color 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            if (remoteInfo) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+        >
           <IconTree size={16} color="#4ec9b0" />
-          <span>BetterGitGraph</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, opacity: 0.8, fontSize: 11 }}>
-          <span>{commits.length} commits</span>
-          <span>•</span>
-          <span>{branches.length} branches</span>
-          {remoteInfo && (
-            <>
-              <span>•</span>
-              <button
-                onClick={openRepoOnWeb}
-                title={`Open repository on ${getProviderName()}: ${remoteInfo.webUrl}`}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  border: '1px solid var(--vscode-button-secondaryBorder, #454545)',
-                  borderRadius: 4,
-                  padding: '2px 8px',
-                  color: 'var(--vscode-textLink-foreground, #4ec9b0)',
-                  cursor: 'pointer',
-                  fontSize: 11,
-                  fontWeight: 500,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 5,
-                }}
-              >
-                <IconExternalLink size={12} color="#4ec9b0" />
-                <span>{getProviderName()}</span>
-              </button>
-            </>
-          )}
-        </div>
+          <span style={{ color: 'var(--vscode-foreground)' }}>{repoName}</span>
+          {remoteInfo && <IconExternalLink size={12} color="#4ec9b0" style={{ opacity: 0.8 }} />}
+        </button>
       </div>
 
-      {/* View Mode Switcher */}
-      <div
+      {/* View Mode Compact Toggle Button */}
+      <button
+        onClick={() => setViewMode(viewMode === 'temporal' ? 'topo' : 'temporal')}
+        title={
+          viewMode === 'temporal'
+            ? 'Current: Timeline View (Chronological). Click to switch to Tree View (DAG).'
+            : 'Current: Tree View (DAG). Click to switch to Timeline View (Chronological).'
+        }
         style={{
+          ...secondaryBtnStyle,
           display: 'flex',
-          backgroundColor: 'var(--vscode-editorWidget-background, #252526)',
-          border: '1px solid var(--vscode-editorWidget-border, #3c3c3c)',
-          borderRadius: 6,
-          padding: 2,
-          gap: 2,
+          alignItems: 'center',
+          gap: 6,
+          fontWeight: 500,
+          padding: '6px 12px',
         }}
       >
-        <button
-          onClick={() => setViewMode('temporal')}
-          title="Timeline View: Commits ordered strictly chronologically with main as central trunk"
-          style={{
-            ...pillStyle,
-            backgroundColor: viewMode === 'temporal' ? 'var(--vscode-button-background, #0e639c)' : 'transparent',
-            color: viewMode === 'temporal' ? '#ffffff' : 'var(--vscode-foreground)',
-            fontWeight: viewMode === 'temporal' ? 600 : 400,
-          }}
-        >
-          <IconTimeline size={13} style={{ marginRight: 6 }} />
-          Timeline View
-        </button>
-        <button
-          onClick={() => setViewMode('topo')}
-          title="Tree Structure View: Commits structured by parent-child branches & merges"
-          style={{
-            ...pillStyle,
-            backgroundColor: viewMode === 'topo' ? 'var(--vscode-button-background, #0e639c)' : 'transparent',
-            color: viewMode === 'topo' ? '#ffffff' : 'var(--vscode-foreground)',
-            fontWeight: viewMode === 'topo' ? 600 : 400,
-          }}
-        >
-          <IconTree size={13} style={{ marginRight: 6 }} />
-          Tree View
-        </button>
-      </div>
+        {viewMode === 'temporal' ? (
+          <>
+            <IconTimeline size={13} color="#4ec9b0" />
+            <span>Timeline View</span>
+          </>
+        ) : (
+          <>
+            <IconTree size={13} color="#569cd6" />
+            <span>Tree View</span>
+          </>
+        )}
+      </button>
 
       {/* Search Input */}
       <div style={{ flex: 1, maxWidth: 320, position: 'relative' }}>

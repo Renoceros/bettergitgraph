@@ -4,7 +4,7 @@ import { useAppStore } from './store';
 // ─── Message Definitions ───────────────────────────────────────────────────────
 
 export type HostToWebviewMessage =
-  | { type: 'GRAPH_DATA'; payload: { commits: CommitNode[]; branches: BranchInfo[]; remoteInfo?: RemoteRepoInfo | null; autoFetchInterval?: number } }
+  | { type: 'GRAPH_DATA'; payload: { commits: CommitNode[]; branches: BranchInfo[]; remoteInfo?: RemoteRepoInfo | null; autoFetchInterval?: number; repoName?: string } }
   | { type: 'AUTO_FETCH_INTERVAL_CHANGE'; payload: { interval: number } }
   | { type: 'COMMIT_FILES_RESULT'; payload: { hash: string; files: ChangedFile[] } }
   | { type: 'DIFF_RESULT'; payload: { hash: string; filePath: string; diff: string } }
@@ -76,7 +76,8 @@ class MessageBus {
           message.payload.commits,
           message.payload.branches,
           message.payload.remoteInfo,
-          message.payload.autoFetchInterval
+          message.payload.autoFetchInterval,
+          message.payload.repoName
         );
         break;
 

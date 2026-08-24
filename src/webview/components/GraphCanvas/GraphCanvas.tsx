@@ -6,6 +6,7 @@ import { ContextMenu } from '../ContextMenu/ContextMenu';
 import { BackgroundContextMenu } from '../ContextMenu/BackgroundContextMenu';
 import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog';
 import { NodePopup } from '../NodePopup/NodePopup';
+import { IconTree } from '../Icons/Icons';
 import { exportGraphToSvg, downloadSvg, downloadCanvasPng } from '../../utils/svg-exporter';
 import type { LayoutNode } from './dag-layout';
 import type { GitOperation } from '../../../extension/operation-executor';
@@ -36,6 +37,8 @@ export const GraphCanvas: React.FC = () => {
   const [pendingConfirmOp, setPendingConfirmOp] = useState<GitOperation | null>(null);
 
   const {
+    commits,
+    branches,
     layout,
     viewport,
     selectedHash,
@@ -389,6 +392,62 @@ export const GraphCanvas: React.FC = () => {
           onClose={() => setBgContextMenu(null)}
         />
       )}
+
+      {/* Floating Top-Left Stats HUD */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 12,
+          left: 14,
+          zIndex: 5,
+          pointerEvents: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '3px 10px',
+          borderRadius: 12,
+          backgroundColor: 'rgba(25, 25, 26, 0.72)',
+          backdropFilter: 'blur(8px)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+          fontSize: 11,
+          color: 'var(--vscode-foreground, #cccccc)',
+          userSelect: 'none',
+        }}
+      >
+        <span style={{ fontWeight: 600, color: '#4ec9b0' }}>{commits.length}</span>
+        <span style={{ opacity: 0.7 }}>commits</span>
+        <span style={{ opacity: 0.3 }}>•</span>
+        <span style={{ fontWeight: 600, color: '#569cd6' }}>{branches.length}</span>
+        <span style={{ opacity: 0.7 }}>branches</span>
+      </div>
+
+      {/* Floating Bottom-Right Brand Watermark */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: 12,
+          right: 14,
+          zIndex: 5,
+          pointerEvents: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '3px 8px',
+          borderRadius: 10,
+          backgroundColor: 'rgba(25, 25, 26, 0.55)',
+          backdropFilter: 'blur(6px)',
+          border: '1px solid rgba(255, 255, 255, 0.06)',
+          fontSize: 11,
+          fontWeight: 600,
+          color: 'var(--vscode-foreground, #cccccc)',
+          opacity: 0.65,
+          userSelect: 'none',
+        }}
+      >
+        <IconTree size={13} color="#4ec9b0" />
+        <span>BetterGitGraph</span>
+      </div>
 
       {/* Confirmation Modal */}
       {pendingConfirmOp && (

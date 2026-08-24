@@ -228,9 +228,10 @@ export class WebviewManager {
       this.gitData.getRemoteRepoInfo(),
     ]);
     const autoFetchInterval = vscode.workspace.getConfiguration('bettergitgraph').get<number>('autoFetchInterval', 0);
+    const repoName = path.basename(this.gitData.repoRoot) || 'Repository';
     await this.panel.webview.postMessage({
       type: 'GRAPH_DATA',
-      payload: { commits: graph.commits, edges: graph.edges, branches, remoteInfo, autoFetchInterval },
+      payload: { commits: graph.commits, edges: graph.edges, branches, remoteInfo, autoFetchInterval, repoName },
     });
   }
 
