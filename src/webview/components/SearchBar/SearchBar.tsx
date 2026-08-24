@@ -2,6 +2,7 @@ import React from 'react';
 import { useAppStore } from '../../store/store';
 import { messageBus } from '../../store/message-bus';
 import { IconTree, IconTimeline, IconBook, IconFetch } from '../Icons/Icons';
+import type { LayoutDirection, DateFormat } from '../GraphCanvas/dag-layout';
 
 export const SearchBar: React.FC = () => {
   const {
@@ -11,11 +12,13 @@ export const SearchBar: React.FC = () => {
     filteredHashes,
     viewMode,
     layoutDirection,
+    dateFormat,
     beginnerMode,
     isFetching,
     setSearchQuery,
     setViewMode,
     setLayoutDirection,
+    setDateFormat,
     setBeginnerMode,
     setIsFetching,
   } = useAppStore();
@@ -23,6 +26,44 @@ export const SearchBar: React.FC = () => {
   const handleFetchAll = () => {
     setIsFetching(true);
     messageBus.send({ type: 'FETCH_ALL' });
+  };
+
+  const handleCycleDirection = () => {
+    const directions: LayoutDirection[] = ['TB', 'BT', 'LR', 'RL'];
+    const currentIndex = directions.indexOf(layoutDirection);
+    const nextDirection = directions[(currentIndex + 1) % directions.length]!;
+    setLayoutDirection(nextDirection);
+  };
+
+  const handleCycleDateFormat = () => {
+    const formats: DateFormat[] = ['local', 'relative', 'iso'];
+    const currentIndex = formats.indexOf(dateFormat);
+    const nextFormat = formats[(currentIndex + 1) % formats.length]!;
+    setDateFormat(nextFormat);
+  };
+
+  const getDirectionLabel = (dir: LayoutDirection): string => {
+    switch (dir) {
+      case 'TB':
+        return '↓ Top-Bottom';
+      case 'BT':
+        return '↑ Bottom-Top';
+      case 'LR':
+        return '→ Left-Right';
+      case 'RL':
+        return '← Right-Left';
+    }
+  };
+
+  const getDateFormatLabel = (df: DateFormat): string => {
+    switch (df) {
+      case 'local':
+        return '🕒 Local Time';
+      case 'relative':
+        return '⏱️ Relative';
+      case 'iso':
+        return '📅 ISO Date';
+    }
   };
 
   return (
@@ -55,7 +96,7 @@ export const SearchBar: React.FC = () => {
         </div>
       </div>
 
-      {/* View Mode Switcher (Tree Structure vs Timeline) */}
+      {/* View Mode Switcher */}
       <div
         style={{
           display: 'flex',
@@ -66,6 +107,19 @@ export const SearchBar: React.FC = () => {
           gap: 2,
         }}
       >
+        <button
+          onClick={() => setViewMode('temporal')}
+          title="Timeline View: Commits ordered strictly chronologically with main as central trunk"
+          style={{
+            ...pillStyle,
+            backgroundColor: viewMode === 'temporal' ? 'var(--vscode-button-background, #0e639c)' : 'transparent',
+            color: viewMode === 'temporal' ? '#ffffff' : 'var(--vscode-foreground)',
+            fontWeight: viewMode === 'temporal' ? 600 : 400,
+          }}
+        >
+          <IconTimeline size={13} style={{ marginRight: 6 }} />
+          Timeline View
+        </button>
         <button
           onClick={() => setViewMode('topo')}
           title="Tree Structure View: Commits structured by parent-child branches & merges"
@@ -79,23 +133,10 @@ export const SearchBar: React.FC = () => {
           <IconTree size={13} style={{ marginRight: 6 }} />
           Tree View
         </button>
-        <button
-          onClick={() => setViewMode('temporal')}
-          title="Timeline View: Commits ordered strictly chronologically by time with main as central trunk"
-          style={{
-            ...pillStyle,
-            backgroundColor: viewMode === 'temporal' ? 'var(--vscode-button-background, #0e639c)' : 'transparent',
-            color: viewMode === 'temporal' ? '#ffffff' : 'var(--vscode-foreground)',
-            fontWeight: viewMode === 'temporal' ? 600 : 400,
-          }}
-        >
-          <IconTimeline size={13} style={{ marginRight: 6 }} />
-          Timeline View
-        </button>
       </div>
 
       {/* Search Input */}
-      <div style={{ flex: 1, maxWidth: 360, position: 'relative' }}>
+      <div style={{ flex: 1, maxWidth: 320, position: 'relative' }}>
         <input
           type="text"
           value={searchQuery}
@@ -157,13 +198,22 @@ export const SearchBar: React.FC = () => {
           {isFetching ? 'Fetching…' : 'Fetch All'}
         </button>
 
-        {/* Orientation Toggle */}
+        {/* Direction Cycle Toggle */}
         <button
-          onClick={() => setLayoutDirection(layoutDirection === 'TB' ? 'LR' : 'TB')}
-          title="Toggle Layout Direction"
+          onClick={handleCycleDirection}
+          title="Click to cycle direction: Top-Bottom -> Bottom-Top -> Left-Right -> Right-Left"
           style={secondaryBtnStyle}
         >
-          {layoutDirection === 'TB' ? 'Top-Bottom' : 'Left-Right'}
+          {getDirectionLabel(layoutDirection)}
+        </button>
+
+        {/* Date Format Cycle Toggle */}
+        <button
+          onClick={handleCycleDateFormat}
+          title="Click to cycle timestamp format: Local Time -> Relative -> ISO Date"
+          style={secondaryBtnStyle}
+        >
+          {getDateFormatLabel(dateFormat)}
         </button>
 
         {/* Beginner Mode Toggle */}
@@ -180,7 +230,7 @@ export const SearchBar: React.FC = () => {
           }}
         >
           <IconBook size={13} color={beginnerMode ? '#4ec9b0' : 'currentColor'} />
-          Beginner Mode: {beginnerMode ? 'ON' : 'OFF'}
+          Beginner: {beginnerMode ? 'ON' : 'OFF'}
         </button>
       </div>
     </header>

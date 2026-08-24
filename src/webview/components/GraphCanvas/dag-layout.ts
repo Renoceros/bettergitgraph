@@ -10,6 +10,17 @@ export type CommitNodeType =
   | 'octopus'  // 3+ parent octopus merge
   | 'stash';   // Stash commit
 
+export type LayoutDirection = 'TB' | 'BT' | 'LR' | 'RL';
+export type DateFormat = 'local' | 'relative' | 'iso';
+
+export interface LayoutPlaque {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  placement: 'right' | 'top' | 'bottom' | 'left';
+}
+
 export interface LayoutNode {
   hash: string;
   shortHash: string;
@@ -18,6 +29,7 @@ export interface LayoutNode {
   authorEmail: string;
   date: Date;
   relativeTime: string;
+  formattedDate: string;
   x: number;
   y: number;
   radius: number;
@@ -29,6 +41,7 @@ export interface LayoutNode {
   isMainBranch: boolean;
   refs: string[];
   parents: string[];
+  plaque: LayoutPlaque;
 }
 
 export interface LayoutEdge {
@@ -54,15 +67,16 @@ export interface GraphLayout {
 }
 
 export interface LayoutOptions {
-  direction?: 'TB' | 'LR';
+  direction?: LayoutDirection;
   viewMode?: 'topo' | 'temporal';
+  dateFormat?: DateFormat;
   nodeRadius?: number;
   nodeSpacingX?: number;
   nodeSpacingY?: number;
   padding?: number;
 }
 
-// ─── Helper: Relative Time ────────────────────────────────────────────────────
+// ─── Date Formatting Helper ───────────────────────────────────────────────────
 
 export function formatRelativeTime(date: Date): string {
   const now = new Date();
@@ -82,20 +96,51 @@ export function formatRelativeTime(date: Date): string {
   return `${diffYear}y ago`;
 }
 
+export function formatCommitDate(date: Date, format: DateFormat = 'local'): string {
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+
+  if (format === 'relative') {
+    return formatRelativeTime(d);
+  }
+
+  if (format === 'iso') {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  // Local Time (e.g. "Aug 24, 19:45 GMT+8" or "19:45 GMT+8")
+  try {
+    const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    const dateStr = d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    
+    // Get GMT offset string
+    const offsetMin = -d.getTimezoneOffset();
+    const offsetHours = Math.floor(Math.abs(offsetMin) / 60);
+    const offsetSign = offsetMin >= 0 ? '+' : '-';
+    const gmtStr = `GMT${offsetSign}${offsetHours}`;
+
+    return `${dateStr}, ${timeStr} (${gmtStr})`;
+  } catch {
+    return formatRelativeTime(d);
+  }
+}
+
 // ─── DAGLayoutEngine ──────────────────────────────────────────────────────────
 
 export class DAGLayoutEngine {
   private readonly defaultOptions: Required<LayoutOptions> = {
     direction: 'TB',
     viewMode: 'temporal',
+    dateFormat: 'local',
     nodeRadius: 8,
-    nodeSpacingX: 52,
-    nodeSpacingY: 48,
-    padding: 36,
+    nodeSpacingX: 64,
+    nodeSpacingY: 60,
+    padding: 40,
   };
 
   /**
-   * Computes layout coordinates (x, y) for all commit nodes and edge spline points.
+   * Computes layout coordinates (x, y) for all commit nodes, edges, and plaques.
    */
   layout(
     commits: CommitNode[],
@@ -116,7 +161,6 @@ export class DAGLayoutEngine {
       };
     }
 
-    // Identify primary trunk branch (main / master)
     const mainBranch =
       branches.find((b) => b.name === 'main' || b.name === 'master') ??
       branches.find((b) => b.isHead) ??
@@ -147,9 +191,12 @@ export class DAGLayoutEngine {
     headCommitHash: string | undefined,
     opts: Required<LayoutOptions>
   ): GraphLayout {
+    // Map direction to Dagre rankdir (BT/RL mapped via TB/LR then inverted)
+    const dagreRankdir = opts.direction === 'LR' || opts.direction === 'RL' ? 'LR' : 'TB';
+
     const g = new dagre.graphlib.Graph({ multigraph: true });
     g.setGraph({
-      rankdir: opts.direction,
+      rankdir: dagreRankdir,
       nodesep: opts.nodeSpacingX,
       ranksep: opts.nodeSpacingY,
       marginx: opts.padding,
@@ -160,10 +207,7 @@ export class DAGLayoutEngine {
 
     const nodeDiameter = opts.nodeRadius * 2;
     for (const commit of commits) {
-      g.setNode(commit.hash, {
-        width: nodeDiameter,
-        height: nodeDiameter,
-      });
+      g.setNode(commit.hash, { width: nodeDiameter, height: nodeDiameter });
     }
 
     const commitSet = new Set(commits.map((c) => c.hash));
@@ -185,10 +229,29 @@ export class DAGLayoutEngine {
     let maxX = -Infinity;
     let maxY = -Infinity;
 
+    // Determine graph bounding box from Dagre for inversion
+    let rawMaxX = 0;
+    let rawMaxY = 0;
     for (const commit of commits) {
+      const dNode = g.node(commit.hash);
+      if (dNode) {
+        rawMaxX = Math.max(rawMaxX, dNode.x);
+        rawMaxY = Math.max(rawMaxY, dNode.y);
+      }
+    }
+
+    for (let i = 0; i < commits.length; i++) {
+      const commit = commits[i]!;
       const dagreNode = g.node(commit.hash);
-      const x = dagreNode?.x ?? opts.padding;
-      const y = dagreNode?.y ?? opts.padding;
+      let x = dagreNode?.x ?? opts.padding;
+      let y = dagreNode?.y ?? opts.padding;
+
+      // Handle BT / RL inversions
+      if (opts.direction === 'BT') {
+        y = rawMaxY - y + opts.padding;
+      } else if (opts.direction === 'RL') {
+        x = rawMaxX - x + opts.padding;
+      }
 
       const branchName = commitBranchMap.get(commit.hash) ?? mainBranchName;
       const isMainBranch = branchName === mainBranchName || branchName.endsWith(`/${mainBranchName}`);
@@ -208,10 +271,15 @@ export class DAGLayoutEngine {
         nodeType = 'stash';
       }
 
-      minX = Math.min(minX, x - opts.nodeRadius);
-      minY = Math.min(minY, y - opts.nodeRadius);
-      maxX = Math.max(maxX, x + opts.nodeRadius);
-      maxY = Math.max(maxY, y + opts.nodeRadius);
+      // Compute Adaptive Plaque Tag Card Geometry
+      const plaqueWidth = 260;
+      const plaqueHeight = 44;
+      const plaque = this.computePlaqueGeometry(x, y, opts.nodeRadius, plaqueWidth, plaqueHeight, opts.direction, i);
+
+      minX = Math.min(minX, x - opts.nodeRadius, plaque.x);
+      minY = Math.min(minY, y - opts.nodeRadius, plaque.y);
+      maxX = Math.max(maxX, x + opts.nodeRadius, plaque.x + plaque.width);
+      maxY = Math.max(maxY, y + opts.nodeRadius, plaque.y + plaque.height);
 
       const layoutNode: LayoutNode = {
         hash: commit.hash,
@@ -221,6 +289,7 @@ export class DAGLayoutEngine {
         authorEmail: commit.authorEmail,
         date: commit.date,
         relativeTime: formatRelativeTime(commit.date),
+        formattedDate: formatCommitDate(commit.date, opts.dateFormat),
         x,
         y,
         radius: isMainBranch ? opts.nodeRadius + 1 : opts.nodeRadius,
@@ -232,6 +301,7 @@ export class DAGLayoutEngine {
         isMainBranch,
         refs: commit.refs,
         parents: commit.parents,
+        plaque,
       };
 
       layoutNodes.push(layoutNode);
@@ -240,23 +310,22 @@ export class DAGLayoutEngine {
 
     const layoutEdges: LayoutEdge[] = [];
     for (const edgeObj of g.edges()) {
-      const dagreEdge = g.edge(edgeObj);
       const sourceNode = nodeMap.get(edgeObj.v);
       const targetNode = nodeMap.get(edgeObj.w);
 
       if (!sourceNode || !targetNode) continue;
 
-      let points: { x: number; y: number }[] = [];
-      if (dagreEdge?.points && dagreEdge.points.length > 0) {
-        points = dagreEdge.points.map((p: { x: number; y: number }) => ({ x: p.x, y: p.y }));
-      } else {
-        points = [
-          { x: sourceNode.x, y: sourceNode.y },
-          { x: targetNode.x, y: targetNode.y },
-        ];
-      }
-
       const isMainEdge = sourceNode.isMainBranch && targetNode.isMainBranch;
+
+      // Smooth spline points between transformed coordinates
+      const midX = (sourceNode.x + targetNode.x) / 2;
+      const midY = (sourceNode.y + targetNode.y) / 2;
+      const points = [
+        { x: sourceNode.x, y: sourceNode.y },
+        { x: sourceNode.x, y: midY },
+        { x: targetNode.x, y: midY },
+        { x: targetNode.x, y: targetNode.y },
+      ];
 
       layoutEdges.push({
         source: edgeObj.v,
@@ -281,7 +350,7 @@ export class DAGLayoutEngine {
   }
 
   /**
-   * Temporal Layout (Sequential Timeline View with Main as the Central Trunk)
+   * Temporal Layout (Sequential Timeline View with 4-Direction Support)
    */
   private layoutTemporal(
     commits: CommitNode[],
@@ -297,7 +366,7 @@ export class DAGLayoutEngine {
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
 
-    // Assign lane columns (Main = Lane 0, features = Lane 1, 2, 3...)
+    // Assign lane indexes (Main = Lane 0, features = Lane 1, 2, 3...)
     const laneMap = new Map<string, number>();
     laneMap.set(mainBranchName, 0);
     let nextLane = 1;
@@ -317,15 +386,35 @@ export class DAGLayoutEngine {
     let maxX = -Infinity;
     let maxY = -Infinity;
 
+    const isHorizontal = opts.direction === 'LR' || opts.direction === 'RL';
+
     for (let rowIndex = 0; rowIndex < sortedCommits.length; rowIndex++) {
       const commit = sortedCommits[rowIndex]!;
       const branchName = commitBranchMap.get(commit.hash) ?? mainBranchName;
       const isMainBranch = branchName === mainBranchName || branchName.endsWith(`/${mainBranchName}`);
       const branchColor = colorMap.get(branchName) ?? (isMainBranch ? '#4ec9b0' : '#569cd6');
-
       const laneIndex = laneMap.get(branchName) ?? 0;
-      const x = opts.padding + laneIndex * opts.nodeSpacingX;
-      const y = opts.padding + rowIndex * opts.nodeSpacingY;
+
+      let x = 0;
+      let y = 0;
+
+      if (opts.direction === 'TB') {
+        // Vertical: Time on Y, Lanes on X
+        x = opts.padding + laneIndex * opts.nodeSpacingX;
+        y = opts.padding + rowIndex * opts.nodeSpacingY;
+      } else if (opts.direction === 'BT') {
+        // Vertical Inverted: Oldest on Bottom, Newest on Top
+        x = opts.padding + laneIndex * opts.nodeSpacingX;
+        y = opts.padding + (sortedCommits.length - 1 - rowIndex) * opts.nodeSpacingY;
+      } else if (opts.direction === 'LR') {
+        // Horizontal: Time on X (newest on left -> oldest right), Lanes on Y
+        x = opts.padding + rowIndex * opts.nodeSpacingX * 2.2;
+        y = opts.padding + laneIndex * opts.nodeSpacingY * 1.5;
+      } else if (opts.direction === 'RL') {
+        // Horizontal Inverted: Time on X (oldest on left -> newest right), Lanes on Y
+        x = opts.padding + (sortedCommits.length - 1 - rowIndex) * opts.nodeSpacingX * 2.2;
+        y = opts.padding + laneIndex * opts.nodeSpacingY * 1.5;
+      }
 
       const isHead = commit.hash === headCommitHash || commit.refs.some((r) => r.includes('HEAD'));
       const isMerge = commit.parents.length > 1;
@@ -341,10 +430,15 @@ export class DAGLayoutEngine {
         nodeType = 'stash';
       }
 
-      minX = Math.min(minX, x - opts.nodeRadius);
-      minY = Math.min(minY, y - opts.nodeRadius);
-      maxX = Math.max(maxX, x + opts.nodeRadius);
-      maxY = Math.max(maxY, y + opts.nodeRadius);
+      // Compute Adaptive Plaque Tag Card Geometry
+      const plaqueWidth = 260;
+      const plaqueHeight = 44;
+      const plaque = this.computePlaqueGeometry(x, y, opts.nodeRadius, plaqueWidth, plaqueHeight, opts.direction, rowIndex);
+
+      minX = Math.min(minX, x - opts.nodeRadius, plaque.x);
+      minY = Math.min(minY, y - opts.nodeRadius, plaque.y);
+      maxX = Math.max(maxX, x + opts.nodeRadius, plaque.x + plaque.width);
+      maxY = Math.max(maxY, y + opts.nodeRadius, plaque.y + plaque.height);
 
       const layoutNode: LayoutNode = {
         hash: commit.hash,
@@ -354,6 +448,7 @@ export class DAGLayoutEngine {
         authorEmail: commit.authorEmail,
         date: commit.date,
         relativeTime: formatRelativeTime(commit.date),
+        formattedDate: formatCommitDate(commit.date, opts.dateFormat),
         x,
         y,
         radius: isMainBranch ? opts.nodeRadius + 1 : opts.nodeRadius,
@@ -365,6 +460,7 @@ export class DAGLayoutEngine {
         isMainBranch,
         refs: commit.refs,
         parents: commit.parents,
+        plaque,
       };
 
       layoutNodes.push(layoutNode);
@@ -383,14 +479,24 @@ export class DAGLayoutEngine {
 
         const isMainEdge = sourceNode.isMainBranch && targetNode.isMainBranch;
 
-        // Smooth Bézier curve between lanes
-        const midY = (sourceNode.y + targetNode.y) / 2;
-        const points = [
-          { x: sourceNode.x, y: sourceNode.y },
-          { x: sourceNode.x, y: midY },
-          { x: targetNode.x, y: midY },
-          { x: targetNode.x, y: targetNode.y },
-        ];
+        let points: { x: number; y: number }[];
+        if (isHorizontal) {
+          const midX = (sourceNode.x + targetNode.x) / 2;
+          points = [
+            { x: sourceNode.x, y: sourceNode.y },
+            { x: midX, y: sourceNode.y },
+            { x: midX, y: targetNode.y },
+            { x: targetNode.x, y: targetNode.y },
+          ];
+        } else {
+          const midY = (sourceNode.y + targetNode.y) / 2;
+          points = [
+            { x: sourceNode.x, y: sourceNode.y },
+            { x: sourceNode.x, y: midY },
+            { x: targetNode.x, y: midY },
+            { x: targetNode.x, y: targetNode.y },
+          ];
+        }
 
         layoutEdges.push({
           source: sourceNode.hash,
@@ -412,6 +518,40 @@ export class DAGLayoutEngine {
       width,
       height,
       bounds: { minX, minY, maxX, maxY },
+    };
+  }
+
+  /**
+   * Computes orientation-aware plaque bounding box to prevent overlap.
+   */
+  private computePlaqueGeometry(
+    nodeX: number,
+    nodeY: number,
+    radius: number,
+    plaqueWidth: number,
+    plaqueHeight: number,
+    direction: LayoutDirection,
+    index: number
+  ): LayoutPlaque {
+    if (direction === 'LR' || direction === 'RL') {
+      // Horizontal flow: place plaque Above or Below node (alternating)
+      const placeAbove = index % 2 === 0;
+      return {
+        x: nodeX - plaqueWidth / 2,
+        y: placeAbove ? nodeY - plaqueHeight - radius - 10 : nodeY + radius + 10,
+        width: plaqueWidth,
+        height: plaqueHeight,
+        placement: placeAbove ? 'top' : 'bottom',
+      };
+    }
+
+    // Vertical flow (TB/BT): place plaque to the Right
+    return {
+      x: nodeX + radius + 14,
+      y: nodeY - plaqueHeight / 2,
+      width: plaqueWidth,
+      height: plaqueHeight,
+      placement: 'right',
     };
   }
 

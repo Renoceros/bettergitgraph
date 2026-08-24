@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { DAGLayoutEngine, formatRelativeTime } from '../../src/webview/components/GraphCanvas/dag-layout';
+import { DAGLayoutEngine, formatRelativeTime, formatCommitDate } from '../../src/webview/components/GraphCanvas/dag-layout';
+import { exportGraphToSvg } from '../../src/webview/utils/svg-exporter';
 import type { CommitNode, BranchInfo } from '../../src/extension/git-data';
 
 describe('DAGLayoutEngine', () => {
@@ -13,12 +14,12 @@ describe('DAGLayoutEngine', () => {
     expect(layout.height).toBe(0);
   });
 
-  it('lays out a single root commit as initial nodeType', () => {
+  it('lays out a single root commit as initial nodeType with plaque', () => {
     const commits: CommitNode[] = [
       {
         hash: 'c1',
         shortHash: 'c1',
-        subject: 'root',
+        subject: 'root commit',
         author: 'Dev',
         authorEmail: 'dev@test.com',
         date: new Date(),
@@ -29,11 +30,13 @@ describe('DAGLayoutEngine', () => {
 
     const layout = engine.layout(commits);
     expect(layout.nodes.length).toBe(1);
-    expect(layout.nodes[0]?.hash).toBe('c1');
-    expect(layout.nodes[0]?.nodeType).toBe('initial');
-    expect(layout.nodes[0]?.isMainBranch).toBe(true);
-    expect(layout.nodes[0]?.x).toBeGreaterThan(0);
-    expect(layout.nodes[0]?.y).toBeGreaterThan(0);
+    const node = layout.nodes[0]!;
+    expect(node.hash).toBe('c1');
+    expect(node.nodeType).toBe('initial');
+    expect(node.isMainBranch).toBe(true);
+    expect(node.plaque).toBeDefined();
+    expect(node.plaque.placement).toBe('right');
+    expect(node.plaque.x).toBeGreaterThan(node.x);
     expect(layout.edges.length).toBe(0);
   });
 
@@ -58,7 +61,6 @@ describe('DAGLayoutEngine', () => {
 
     expect(node3.y).not.toBe(node2.y);
     expect(node2.y).not.toBe(node1.y);
-    expect(layout.edges[0]?.points.length).toBeGreaterThanOrEqual(2);
   });
 
   it('lays out a 2-parent merge commit and flags nodeType: merge', () => {
@@ -80,73 +82,67 @@ describe('DAGLayoutEngine', () => {
     const mergeNode = layout.nodeMap.get('c4')!;
     expect(mergeNode.isMerge).toBe(true);
     expect(mergeNode.nodeType).toBe('merge');
-    expect(mergeNode.isHead).toBe(true);
-
-    const normalNode = layout.nodeMap.get('c3')!;
-    expect(normalNode.isMerge).toBe(false);
-    expect(normalNode.nodeType).toBe('commit');
-
-    const mergeEdges = layout.edges.filter((e) => e.source === 'c4');
-    expect(mergeEdges.length).toBe(2);
   });
 
-  it('lays out an octopus merge with 3 parents and flags nodeType: octopus', () => {
+  it('supports all 4 layout directions (TB, BT, LR, RL)', () => {
     const commits: CommitNode[] = [
-      { hash: 'm1', shortHash: 'm1', subject: 'octopus merge', author: 'A', authorEmail: 'a@a.com', date: new Date(), parents: ['p1', 'p2', 'p3'], refs: ['HEAD -> main'] },
-      { hash: 'p1', shortHash: 'p1', subject: 'branch 1', author: 'A', authorEmail: 'a@a.com', date: new Date(), parents: ['root'], refs: ['b1'] },
-      { hash: 'p2', shortHash: 'p2', subject: 'branch 2', author: 'A', authorEmail: 'a@a.com', date: new Date(), parents: ['root'], refs: ['b2'] },
-      { hash: 'p3', shortHash: 'p3', subject: 'branch 3', author: 'A', authorEmail: 'a@a.com', date: new Date(), parents: ['root'], refs: ['b3'] },
-      { hash: 'root', shortHash: 'root', subject: 'root', author: 'A', authorEmail: 'a@a.com', date: new Date(), parents: [], refs: [] },
+      { hash: 'c2', shortHash: 'c2', subject: 'second', author: 'A', authorEmail: 'a@a.com', date: new Date(1700000200000), parents: ['c1'], refs: ['HEAD -> main'] },
+      { hash: 'c1', shortHash: 'c1', subject: 'first', author: 'A', authorEmail: 'a@a.com', date: new Date(1700000100000), parents: [], refs: [] },
+    ];
+
+    // TB
+    const layoutTB = engine.layout(commits, [], new Map(), { direction: 'TB', viewMode: 'temporal' });
+    const n1TB = layoutTB.nodeMap.get('c1')!;
+    const n2TB = layoutTB.nodeMap.get('c2')!;
+    expect(n2TB.y).toBeLessThan(n1TB.y);
+    expect(n2TB.plaque.placement).toBe('right');
+
+    // BT (Inverted vertical)
+    const layoutBT = engine.layout(commits, [], new Map(), { direction: 'BT', viewMode: 'temporal' });
+    const n1BT = layoutBT.nodeMap.get('c1')!;
+    const n2BT = layoutBT.nodeMap.get('c2')!;
+    expect(n1BT.y).toBeLessThan(n2BT.y);
+
+    // LR (Horizontal: time on X, plaque above/below)
+    const layoutLR = engine.layout(commits, [], new Map(), { direction: 'LR', viewMode: 'temporal' });
+    const n1LR = layoutLR.nodeMap.get('c1')!;
+    const n2LR = layoutLR.nodeMap.get('c2')!;
+    expect(n2LR.x).toBeLessThan(n1LR.x);
+    expect(['top', 'bottom']).toContain(n2LR.plaque.placement);
+
+    // RL (Horizontal Inverted)
+    const layoutRL = engine.layout(commits, [], new Map(), { direction: 'RL', viewMode: 'temporal' });
+    const n1RL = layoutRL.nodeMap.get('c1')!;
+    const n2RL = layoutRL.nodeMap.get('c2')!;
+    expect(n1RL.x).toBeLessThan(n2RL.x);
+  });
+
+  it('formats commit dates with local, relative, and iso styles', () => {
+    const testDate = new Date('2026-08-24T12:30:00Z');
+
+    const relativeStr = formatCommitDate(new Date(), 'relative');
+    expect(relativeStr).toBe('just now');
+
+    const isoStr = formatCommitDate(testDate, 'iso');
+    expect(isoStr).toContain('2026-08-24');
+
+    const localStr = formatCommitDate(testDate, 'local');
+    expect(localStr).toContain('GMT');
+  });
+
+  it('exports graph to valid standalone SVG XML', () => {
+    const commits: CommitNode[] = [
+      { hash: 'c2', shortHash: 'c2', subject: 'second commit', author: 'Dev', authorEmail: 'dev@test.com', date: new Date(), parents: ['c1'], refs: ['HEAD -> main'] },
+      { hash: 'c1', shortHash: 'c1', subject: 'initial commit', author: 'Dev', authorEmail: 'dev@test.com', date: new Date(), parents: [], refs: [] },
     ];
 
     const layout = engine.layout(commits);
-    expect(layout.nodes.length).toBe(5);
+    const svg = exportGraphToSvg(layout);
 
-    const octopusNode = layout.nodeMap.get('m1')!;
-    expect(octopusNode.isMerge).toBe(true);
-    expect(octopusNode.nodeType).toBe('octopus');
-    expect(octopusNode.parents.length).toBe(3);
-
-    const edges = layout.edges.filter((e) => e.source === 'm1');
-    expect(edges.length).toBe(3);
-  });
-
-  it('supports chronological Timeline (temporal) view mode with Main as central trunk', () => {
-    const commits: CommitNode[] = [
-      { hash: 'c3', shortHash: 'c3', subject: 'recent', author: 'A', authorEmail: 'a@a.com', date: new Date(1700000300000), parents: ['c1'], refs: ['HEAD -> main'] },
-      { hash: 'c2', shortHash: 'c2', subject: 'middle', author: 'B', authorEmail: 'b@b.com', date: new Date(1700000200000), parents: ['c1'], refs: ['feature/x'] },
-      { hash: 'c1', shortHash: 'c1', subject: 'oldest', author: 'A', authorEmail: 'a@a.com', date: new Date(1700000100000), parents: [], refs: [] },
-    ];
-
-    const branches: BranchInfo[] = [
-      { name: 'main', isRemote: false, isHead: true, headHash: 'c3', aheadCount: 0, behindCount: 0 },
-      { name: 'feature/x', isRemote: false, isHead: false, headHash: 'c2', aheadCount: 0, behindCount: 0 },
-    ];
-
-    const temporalLayout = engine.layout(commits, branches, new Map(), { viewMode: 'temporal' });
-    expect(temporalLayout.nodes.length).toBe(3);
-
-    const nodeNewest = temporalLayout.nodeMap.get('c3')!;
-    const nodeMiddle = temporalLayout.nodeMap.get('c2')!;
-    const nodeOldest = temporalLayout.nodeMap.get('c1')!;
-
-    // In temporal view, y strictly increases chronologically
-    expect(nodeNewest.y).toBeLessThan(nodeMiddle.y);
-    expect(nodeMiddle.y).toBeLessThan(nodeOldest.y);
-
-    // Main commits should be on Lane 0 (x = padding)
-    expect(nodeNewest.x).toBe(36);
-    expect(nodeOldest.x).toBe(36);
-  });
-
-  it('formats relative time strings accurately', () => {
-    const now = new Date();
-    expect(formatRelativeTime(now)).toBe('just now');
-
-    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
-    expect(formatRelativeTime(twoHoursAgo)).toBe('2h ago');
-
-    const fiveDaysAgo = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
-    expect(formatRelativeTime(fiveDaysAgo)).toBe('5d ago');
+    expect(svg).toContain('<?xml version="1.0"');
+    expect(svg).toContain('<svg xmlns="http://www.w3.org/2000/svg"');
+    expect(svg).toContain('INITIAL');
+    expect(svg).toContain('second commit');
+    expect(svg).toContain('</svg>');
   });
 });

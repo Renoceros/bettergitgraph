@@ -21,7 +21,7 @@ export class CanvasRenderer {
   }
 
   /**
-   * Main render method. Applies viewport transformation and culling.
+   * Main render method. Applies viewport transformation, culling, and rendering.
    */
   render(layout: GraphLayout, viewport: Viewport, options: RenderOptions): void {
     const { ctx, canvas } = this;
@@ -45,22 +45,25 @@ export class CanvasRenderer {
     ctx.scale(viewport.zoom, viewport.zoom);
 
     // Calculate visible bounding box in graph coordinates for culling
-    const visibleMinX = -viewport.x / viewport.zoom - 50;
-    const visibleMaxX = (-viewport.x + viewport.width) / viewport.zoom + 50;
-    const visibleMinY = -viewport.y / viewport.zoom - 50;
-    const visibleMaxY = (-viewport.y + viewport.height) / viewport.zoom + 50;
+    const visibleMinX = -viewport.x / viewport.zoom - 100;
+    const visibleMaxX = (-viewport.x + viewport.width) / viewport.zoom + 100;
+    const visibleMinY = -viewport.y / viewport.zoom - 100;
+    const visibleMaxY = (-viewport.y + viewport.height) / viewport.zoom + 100;
 
-    // 1. Draw Edges (with thicker trunk lines for main)
+    // 1. Draw Edges
     this.drawEdges(layout.edges, visibleMinX, visibleMaxX, visibleMinY, visibleMaxY, options);
 
-    // 2. Draw Nodes & Human-friendly Labels
+    // 2. Draw Plaques (Tag Cards)
+    this.drawPlaques(layout.nodes, visibleMinX, visibleMaxX, visibleMinY, visibleMaxY, options, viewport.zoom);
+
+    // 3. Draw Nodes
     this.drawNodes(layout.nodes, visibleMinX, visibleMaxX, visibleMinY, visibleMaxY, options);
 
     ctx.restore();
   }
 
   /**
-   * Hit test a screen coordinate (pixels) to find the hovered/clicked commit node.
+   * Hit test a screen coordinate (pixels) to find the hovered/clicked commit node or plaque.
    */
   hitTest(
     screenX: number,
@@ -80,9 +83,22 @@ export class CanvasRenderer {
       const node = layout.nodes[i];
       if (!node) continue;
 
+      // 1. Test Node Circle
       const dx = graphX - node.x;
       const dy = graphY - node.y;
       if (dx * dx + dy * dy <= hitRadiusSq) {
+        return node;
+      }
+
+      // 2. Test Plaque Bounding Box
+      const { plaque } = node;
+      if (
+        plaque &&
+        graphX >= plaque.x &&
+        graphX <= plaque.x + plaque.width &&
+        graphY >= plaque.y &&
+        graphY <= plaque.y + plaque.height
+      ) {
         return node;
       }
     }
@@ -111,7 +127,7 @@ export class CanvasRenderer {
       const edgeMaxY = Math.max(pFirst.y, pLast.y);
 
       if (edgeMaxX < minX || edgeMinX > maxX || edgeMaxY < minY || edgeMinY > maxY) {
-        continue; // Culled
+        continue;
       }
 
       const isDimmed =
@@ -122,8 +138,6 @@ export class CanvasRenderer {
       ctx.save();
       ctx.beginPath();
       ctx.strokeStyle = isDimmed ? 'rgba(128, 128, 128, 0.2)' : edge.color;
-
-      // ── Thicker line for main trunk backbone ──────────────────────────────
       ctx.lineWidth = edge.isMainEdge ? 5.0 : 2.5;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
@@ -148,6 +162,120 @@ export class CanvasRenderer {
     }
   }
 
+  private drawPlaques(
+    nodes: LayoutNode[],
+    minX: number,
+    maxX: number,
+    minY: number,
+    maxY: number,
+    options: RenderOptions,
+    zoom: number
+  ): void {
+    // When zoomed out too far, hide plaques to maintain clean overview
+    if (zoom < 0.35) return;
+
+    const { ctx } = this;
+    const isDark = options.theme !== 'light';
+
+    for (const node of nodes) {
+      const { plaque } = node;
+      if (!plaque) continue;
+
+      if (
+        plaque.x + plaque.width < minX ||
+        plaque.x > maxX ||
+        plaque.y + plaque.height < minY ||
+        plaque.y > maxY
+      ) {
+        continue;
+      }
+
+      const isSelected = options.selectedHash === node.hash;
+      const isHovered = options.hoveredHash === node.hash;
+      const isDimmed = options.filteredHashes ? !options.filteredHashes.has(node.hash) : false;
+
+      ctx.save();
+      if (isDimmed) {
+        ctx.globalAlpha = 0.2;
+      }
+
+      // 1. Draw Connector Stem Line from Node to Plaque
+      ctx.beginPath();
+      ctx.strokeStyle = isSelected ? '#4ec9b0' : node.branchColor;
+      ctx.lineWidth = isSelected ? 2 : 1;
+      ctx.setLineDash([2, 2]);
+
+      if (plaque.placement === 'top') {
+        ctx.moveTo(node.x, node.y - node.radius);
+        ctx.lineTo(node.x, plaque.y + plaque.height);
+      } else if (plaque.placement === 'bottom') {
+        ctx.moveTo(node.x, node.y + node.radius);
+        ctx.lineTo(node.x, plaque.y);
+      } else {
+        ctx.moveTo(node.x + node.radius, node.y);
+        ctx.lineTo(plaque.x, node.y);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 2. Draw Plaque Container (Card)
+      const plaqueBg = isDark
+        ? (isSelected ? '#2d2d30' : '#252526')
+        : (isSelected ? '#e8f4fc' : '#f8f9fa');
+      const borderColor = isSelected
+        ? '#4ec9b0'
+        : isHovered
+        ? (isDark ? '#888888' : '#aaaaaa')
+        : (isDark ? '#3c3c3c' : '#d0d7de');
+
+      ctx.beginPath();
+      ctx.roundRect(plaque.x, plaque.y, plaque.width, plaque.height, 6);
+      ctx.fillStyle = plaqueBg;
+      ctx.fill();
+      ctx.strokeStyle = borderColor;
+      ctx.lineWidth = isSelected ? 1.8 : 1;
+      ctx.stroke();
+
+      // 3. Draw Type Badge Pill
+      const typeLabel = this.getNodeTypeBadgeLabel(node.nodeType);
+      const typeBgColor = this.getNodeTypeBadgeBg(node.nodeType, isDark);
+      const typeTextColor = this.getNodeTypeBadgeTextColor(node.nodeType, isDark);
+
+      ctx.font = 'bold 9px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      const typeWidth = ctx.measureText(typeLabel).width + 10;
+      const badgeX = plaque.x + 8;
+      const badgeY = plaque.y + 6;
+
+      ctx.beginPath();
+      ctx.roundRect(badgeX, badgeY, typeWidth, 16, 3);
+      ctx.fillStyle = typeBgColor;
+      ctx.fill();
+      ctx.fillStyle = typeTextColor;
+      ctx.textBaseline = 'middle';
+      ctx.fillText(typeLabel, badgeX + 5, badgeY + 8);
+
+      // 4. Draw Title (Subject)
+      ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      ctx.fillStyle = isDark ? '#ffffff' : '#111111';
+      ctx.textBaseline = 'middle';
+
+      const titleX = badgeX + typeWidth + 8;
+      const maxTitleWidth = plaque.width - (titleX - plaque.x) - 8;
+      const truncatedTitle = this.truncateTextToWidth(node.subject, maxTitleWidth, ctx);
+
+      ctx.fillText(truncatedTitle, titleX, badgeY + 8);
+
+      // 5. Draw Author & Date
+      ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      ctx.fillStyle = isDark ? '#888888' : '#666666';
+      const subText = `${node.author}  •  ${node.formattedDate || node.relativeTime}`;
+      const truncatedSub = this.truncateTextToWidth(subText, plaque.width - 16, ctx);
+      ctx.fillText(truncatedSub, plaque.x + 8, plaque.y + 30);
+
+      ctx.restore();
+    }
+  }
+
   private drawNodes(
     nodes: LayoutNode[],
     minX: number,
@@ -161,7 +289,7 @@ export class CanvasRenderer {
 
     for (const node of nodes) {
       if (node.x < minX || node.x > maxX || node.y < minY || node.y > maxY) {
-        continue; // Culled
+        continue;
       }
 
       const isSelected = options.selectedHash === node.hash;
@@ -175,7 +303,7 @@ export class CanvasRenderer {
 
       const radius = node.radius;
 
-      // ── Outer Selection / Hover Glow Ring ─────────────────────────────────
+      // Outer Selection Glow Ring
       if (isSelected || isHovered) {
         ctx.beginPath();
         ctx.arc(node.x, node.y, radius + (isSelected ? 7 : 4), 0, Math.PI * 2);
@@ -186,10 +314,9 @@ export class CanvasRenderer {
         ctx.stroke();
       }
 
-      // ── Node Body by Type ─────────────────────────────────────────────────
+      // Node Body
       ctx.beginPath();
       if (node.nodeType === 'merge' || node.nodeType === 'octopus') {
-        // Merge commit: distinct double-ring
         ctx.arc(node.x, node.y, radius + 2, 0, Math.PI * 2);
         ctx.fillStyle = node.branchColor;
         ctx.fill();
@@ -202,7 +329,6 @@ export class CanvasRenderer {
         ctx.fillStyle = isDark ? '#1e1e1e' : '#ffffff';
         ctx.fill();
       } else if (node.nodeType === 'initial') {
-        // Initial Root commit: solid square or distinctive anchor dot
         ctx.arc(node.x, node.y, radius + 1, 0, Math.PI * 2);
         ctx.fillStyle = '#4ec9b0';
         ctx.fill();
@@ -210,7 +336,6 @@ export class CanvasRenderer {
         ctx.lineWidth = 2;
         ctx.stroke();
       } else {
-        // Standard commit node
         ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
         ctx.fillStyle = node.branchColor;
         ctx.fill();
@@ -219,7 +344,7 @@ export class CanvasRenderer {
         ctx.stroke();
       }
 
-      // ── HEAD Pulsing Indicator ────────────────────────────────────────────
+      // HEAD Indicator
       if (node.isHead) {
         ctx.beginPath();
         ctx.arc(node.x, node.y, radius + 5, 0, Math.PI * 2);
@@ -230,100 +355,26 @@ export class CanvasRenderer {
         ctx.setLineDash([]);
       }
 
-      // ── Human-Friendly Node Labels & Badges ───────────────────────────────
-      this.drawHumanNodeLabels(node, isDark);
-
       ctx.restore();
     }
   }
 
-  private drawHumanNodeLabels(node: LayoutNode, isDark: boolean): void {
-    const { ctx } = this;
-    const startX = node.x + node.radius + 12;
-    let currentX = startX;
-    const rowY = node.y;
-
-    // 1. Draw Type Badge (Commit / Merge / Initial / Octopus)
-    const typeLabel = this.getNodeTypeBadgeLabel(node.nodeType);
-    const typeBgColor = this.getNodeTypeBadgeBg(node.nodeType, isDark);
-    const typeTextColor = this.getNodeTypeBadgeTextColor(node.nodeType, isDark);
-
-    ctx.font = 'bold 10px sans-serif';
-    const typeWidth = ctx.measureText(typeLabel).width + 12;
-    const badgeHeight = 16;
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.roundRect(currentX, rowY - badgeHeight / 2, typeWidth, badgeHeight, 3);
-    ctx.fillStyle = typeBgColor;
-    ctx.fill();
-    ctx.fillStyle = typeTextColor;
-    ctx.textBaseline = 'middle';
-    ctx.fillText(typeLabel, currentX + 6, rowY);
-    ctx.restore();
-
-    currentX += typeWidth + 8;
-
-    // 2. Draw Branch / Ref Chips if attached
-    for (const ref of node.refs) {
-      const isTag = ref.startsWith('tag: ');
-      const isHeadRef = ref.includes('HEAD');
-      const labelText = ref.replace(/^HEAD -> /, '').replace(/^tag: /, '');
-
-      ctx.font = '11px sans-serif';
-      const textWidth = ctx.measureText(labelText).width;
-      const badgeWidth = textWidth + 14;
-
-      ctx.save();
-      ctx.beginPath();
-      ctx.roundRect(currentX, rowY - badgeHeight / 2, badgeWidth, badgeHeight, 3);
-
-      if (isTag) {
-        ctx.fillStyle = isDark ? '#59441B' : '#FFF3CD';
-        ctx.fill();
-        ctx.fillStyle = isDark ? '#FFD43B' : '#856404';
-      } else if (isHeadRef) {
-        ctx.fillStyle = isDark ? '#1B4D3E' : '#D4EDDA';
-        ctx.fill();
-        ctx.fillStyle = isDark ? '#75B798' : '#155724';
+  private truncateTextToWidth(text: string, maxWidth: number, ctx: CanvasRenderingContext2D): string {
+    if (ctx.measureText(text).width <= maxWidth) return text;
+    let low = 0;
+    let high = text.length;
+    let best = text;
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      const slice = `${text.slice(0, mid)}…`;
+      if (ctx.measureText(slice).width <= maxWidth) {
+        best = slice;
+        low = mid + 1;
       } else {
-        ctx.fillStyle = isDark ? '#2D3748' : '#E2E8F0';
-        ctx.fill();
-        ctx.fillStyle = isDark ? '#E2E8F0' : '#2D3748';
+        high = mid - 1;
       }
-
-      ctx.textBaseline = 'middle';
-      ctx.fillText(labelText, currentX + 7, rowY);
-      ctx.restore();
-
-      currentX += badgeWidth + 6;
     }
-
-    // 3. Draw Title (Commit Subject) — Main Focus
-    ctx.save();
-    ctx.font = 'bold 12px var(--vscode-font-family, sans-serif)';
-    ctx.fillStyle = isDark ? '#ffffff' : '#111111';
-    ctx.textBaseline = 'middle';
-
-    const maxSubjectLen = 50;
-    const truncatedSubject =
-      node.subject.length > maxSubjectLen
-        ? `${node.subject.slice(0, maxSubjectLen)}…`
-        : node.subject;
-
-    ctx.fillText(truncatedSubject, currentX, rowY);
-    const subjectWidth = ctx.measureText(truncatedSubject).width;
-    ctx.restore();
-
-    currentX += subjectWidth + 12;
-
-    // 4. Draw Author + Relative Time (No raw SHA!)
-    ctx.save();
-    ctx.font = '11px var(--vscode-font-family, sans-serif)';
-    ctx.fillStyle = isDark ? '#888888' : '#666666';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(`•  ${node.author}  •  ${node.relativeTime}`, currentX, rowY);
-    ctx.restore();
+    return best;
   }
 
   private getNodeTypeBadgeLabel(type: CommitNodeType): string {

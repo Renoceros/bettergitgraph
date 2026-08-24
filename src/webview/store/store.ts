@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { CommitNode, BranchInfo, ChangedFile, FetchResult } from '../../extension/git-data';
-import type { GraphLayout, LayoutNode } from '../components/GraphCanvas/dag-layout';
+import type { GraphLayout, LayoutDirection, DateFormat } from '../components/GraphCanvas/dag-layout';
 import { DAGLayoutEngine } from '../components/GraphCanvas/dag-layout';
 import { BranchColorEngine } from '../../extension/color-engine';
 
@@ -41,8 +41,9 @@ export interface AppState {
 
   // Settings & Views
   viewMode: 'topo' | 'temporal';
+  layoutDirection: LayoutDirection;
+  dateFormat: DateFormat;
   beginnerMode: boolean;
-  layoutDirection: 'TB' | 'LR';
   nodeRadius: number;
   theme: 'dark' | 'light' | 'high-contrast';
   viewport: Viewport;
@@ -59,10 +60,12 @@ export interface AppState {
   setAuthorFilter: (authors: string[]) => void;
   setBranchFilter: (branches: string[]) => void;
   setViewMode: (mode: 'topo' | 'temporal') => void;
+  setLayoutDirection: (dir: LayoutDirection) => void;
+  setDateFormat: (format: DateFormat) => void;
   setBeginnerMode: (enabled: boolean) => void;
-  setLayoutDirection: (dir: 'TB' | 'LR') => void;
   setViewport: (updater: (prev: Viewport) => Viewport) => void;
   resetViewport: () => void;
+  fitToScreen: () => void;
   setIsFetching: (fetching: boolean, result?: FetchResult) => void;
   recomputeLayout: () => void;
 }
@@ -85,8 +88,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   authorFilter: [],
   branchFilter: [],
   viewMode: 'temporal',
-  beginnerMode: true,
   layoutDirection: 'TB',
+  dateFormat: 'local',
+  beginnerMode: true,
   nodeRadius: 8,
   theme: 'dark',
   viewport: { x: 50, y: 50, zoom: 1.0, width: 800, height: 600 },
@@ -94,7 +98,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   lastFetchResult: null,
 
   setGraphData: (commits, branches) => {
-    const { layoutDirection, viewMode, nodeRadius, theme } = get();
+    const { layoutDirection, viewMode, dateFormat, nodeRadius, theme } = get();
     colorEngine.setTheme(theme);
     const branchNames = branches.map((b) => b.name);
     const colorMap = colorEngine.getAllColors(branchNames);
@@ -102,6 +106,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const layout = layoutEngine.layout(commits, branches, colorMap, {
       direction: layoutDirection,
       viewMode,
+      dateFormat,
       nodeRadius,
     });
 
@@ -109,7 +114,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   recomputeLayout: () => {
-    const { commits, branches, layoutDirection, viewMode, nodeRadius, theme } = get();
+    const { commits, branches, layoutDirection, viewMode, dateFormat, nodeRadius, theme } = get();
     colorEngine.setTheme(theme);
     const branchNames = branches.map((b) => b.name);
     const colorMap = colorEngine.getAllColors(branchNames);
@@ -117,6 +122,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const layout = layoutEngine.layout(commits, branches, colorMap, {
       direction: layoutDirection,
       viewMode,
+      dateFormat,
       nodeRadius,
     });
 
@@ -180,12 +186,17 @@ export const useAppStore = create<AppState>((set, get) => ({
     get().recomputeLayout();
   },
 
-  setBeginnerMode: (beginnerMode) => set({ beginnerMode }),
-
   setLayoutDirection: (layoutDirection) => {
     set({ layoutDirection });
     get().recomputeLayout();
   },
+
+  setDateFormat: (dateFormat) => {
+    set({ dateFormat });
+    get().recomputeLayout();
+  },
+
+  setBeginnerMode: (beginnerMode) => set({ beginnerMode }),
 
   setViewport: (updater) =>
     set((state) => ({ viewport: updater(state.viewport) })),
@@ -207,6 +218,31 @@ export const useAppStore = create<AppState>((set, get) => ({
         viewport: { ...state.viewport, x: 50, y: 50, zoom: 1.0 },
       }));
     }
+  },
+
+  fitToScreen: () => {
+    const { layout, viewport } = get();
+    if (!layout || layout.nodes.length === 0) return;
+
+    const padding = 60;
+    const graphWidth = layout.bounds.maxX - layout.bounds.minX + padding * 2;
+    const graphHeight = layout.bounds.maxY - layout.bounds.minY + padding * 2;
+
+    const scaleX = viewport.width / graphWidth;
+    const scaleY = viewport.height / graphHeight;
+    const fitZoom = Math.min(1.5, Math.max(0.2, Math.min(scaleX, scaleY) * 0.9));
+
+    const centerX = (layout.bounds.minX + layout.bounds.maxX) / 2;
+    const centerY = (layout.bounds.minY + layout.bounds.maxY) / 2;
+
+    set({
+      viewport: {
+        ...viewport,
+        zoom: fitZoom,
+        x: viewport.width / 2 - centerX * fitZoom,
+        y: viewport.height / 2 - centerY * fitZoom,
+      },
+    });
   },
 
   setIsFetching: (isFetching, lastFetchResult) =>

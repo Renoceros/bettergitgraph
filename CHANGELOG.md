@@ -5,6 +5,15 @@ All notable changes to BetterGitGraph will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.4] - 2026-08-24
+
+### Added
+- **Orientation-Aware Plaques**: Encapsulated Tag Card badges positioned to the Right in vertical modes (`TB`/`BT`) and Above/Below in horizontal modes (`LR`/`RL`), preventing label clashing and visual overlap across dense branches.
+- **4-Direction Flow Matrix**: Full support for `TB` (Top-to-Bottom), `BT` (Bottom-to-Top), `LR` (Left-to-Right), and `RL` (Right-to-Left) in both Tree and Timeline modes.
+- **Configurable Timestamps**: Added Local Time format (`19:45 GMT+8` / `Aug 24, 19:45`) alongside Relative and ISO formats, configurable in settings and UI.
+- **Export Repo Map as SVG & PNG**: Right-click canvas background to instantly export and download standalone vector `.svg` or high-res `.png` repo maps.
+- **Fit to Screen**: Added one-click auto-fit (⛶) in floating controls toolbar.
+
 ## [1.2.3] - 2026-08-24
 
 ### Changed

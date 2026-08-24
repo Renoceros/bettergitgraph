@@ -3,8 +3,10 @@ import { useAppStore } from '../../store/store';
 import { CanvasRenderer } from './renderer';
 import { messageBus } from '../../store/message-bus';
 import { ContextMenu } from '../ContextMenu/ContextMenu';
+import { BackgroundContextMenu } from '../ContextMenu/BackgroundContextMenu';
 import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog';
 import { NodePopup } from '../NodePopup/NodePopup';
+import { exportGraphToSvg, downloadSvg, downloadCanvasPng } from '../../utils/svg-exporter';
 import type { LayoutNode } from './dag-layout';
 import type { GitOperation } from '../../../extension/operation-executor';
 
@@ -14,10 +16,15 @@ export const GraphCanvas: React.FC = () => {
   const isDraggingRef = useRef(false);
   const lastMousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  const [contextMenu, setContextMenu] = useState<{
+  const [nodeContextMenu, setNodeContextMenu] = useState<{
     x: number;
     y: number;
     node: LayoutNode;
+  } | null>(null);
+
+  const [bgContextMenu, setBgContextMenu] = useState<{
+    x: number;
+    y: number;
   } | null>(null);
 
   const [popupNodeState, setPopupNodeState] = useState<{
@@ -42,6 +49,7 @@ export const GraphCanvas: React.FC = () => {
     selectCommit,
     setHoveredCommit,
     resetViewport,
+    fitToScreen,
   } = useAppStore();
 
   // Initialize Canvas Renderer
@@ -161,7 +169,7 @@ export const GraphCanvas: React.FC = () => {
     }
   };
 
-  // ── Context Menu (Right Click) ──────────────────────────────────────────────
+  // ── Context Menu (Right Click on Node or Background) ─────────────────────────
 
   const handleContextMenu = (e: React.MouseEvent<HTMLCanvasElement>) => {
     e.preventDefault();
@@ -175,14 +183,32 @@ export const GraphCanvas: React.FC = () => {
     const hitNode = rendererRef.current.hitTest(clickX, clickY, layout, viewport);
     if (hitNode) {
       selectCommit(hitNode.hash);
-      setContextMenu({
+      setBgContextMenu(null);
+      setNodeContextMenu({
         x: e.clientX,
         y: e.clientY,
         node: hitNode,
       });
     } else {
-      setContextMenu(null);
+      setNodeContextMenu(null);
+      setBgContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+      });
     }
+  };
+
+  // ── SVG & PNG Export ────────────────────────────────────────────────────────
+
+  const handleExportSvg = () => {
+    if (!layout) return;
+    const svgStr = exportGraphToSvg(layout, { theme: theme === 'light' ? 'light' : 'dark' });
+    downloadSvg(svgStr, 'bettergitgraph-repo-map.svg');
+  };
+
+  const handleExportPng = () => {
+    if (!canvasRef.current) return;
+    downloadCanvasPng(canvasRef.current, 'bettergitgraph-repo-map.png');
   };
 
   // ── Operation Dispatch & Confirmation ───────────────────────────────────────
@@ -210,7 +236,6 @@ export const GraphCanvas: React.FC = () => {
       setPopupNodeState((prev) =>
         prev ? { ...prev, node: parentNode } : null
       );
-      // Pan viewport to center parent node
       setViewport((prev) => ({
         ...prev,
         x: prev.width / 2 - parentNode.x,
@@ -275,14 +300,14 @@ export const GraphCanvas: React.FC = () => {
         style={{ display: 'block', width: '100%', height: '100%' }}
       />
 
-      {/* Floating Canvas Controls */}
+      {/* Floating Canvas Controls Toolbar */}
       <div
         style={{
           position: 'absolute',
           bottom: 16,
           left: 16,
           display: 'flex',
-          gap: 8,
+          gap: 6,
           backgroundColor: 'var(--vscode-editorWidget-background, #252526)',
           border: '1px solid var(--vscode-editorWidget-border, #454545)',
           borderRadius: 6,
@@ -314,8 +339,15 @@ export const GraphCanvas: React.FC = () => {
           －
         </button>
         <div style={{ width: 1, height: 16, backgroundColor: '#555', margin: '0 4px' }} />
+        <button onClick={fitToScreen} title="Fit Entire Graph to Screen (⛶)" style={buttonStyle}>
+          ⛶ Fit
+        </button>
         <button onClick={resetViewport} title="Center HEAD (Double click canvas)" style={buttonStyle}>
           Center HEAD
+        </button>
+        <div style={{ width: 1, height: 16, backgroundColor: '#555', margin: '0 4px' }} />
+        <button onClick={handleExportSvg} title="Export Repo Map as SVG" style={buttonStyle}>
+          SVG
         </button>
       </div>
 
@@ -333,15 +365,28 @@ export const GraphCanvas: React.FC = () => {
         />
       )}
 
-      {/* Right-Click Context Menu */}
-      {contextMenu && (
+      {/* Right-Click Commit Node Menu */}
+      {nodeContextMenu && (
         <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          node={contextMenu.node}
+          x={nodeContextMenu.x}
+          y={nodeContextMenu.y}
+          node={nodeContextMenu.node}
           beginnerMode={beginnerMode}
           onSelectOperation={handleSelectOperation}
-          onClose={() => setContextMenu(null)}
+          onClose={() => setNodeContextMenu(null)}
+        />
+      )}
+
+      {/* Right-Click Background Menu */}
+      {bgContextMenu && (
+        <BackgroundContextMenu
+          x={bgContextMenu.x}
+          y={bgContextMenu.y}
+          onExportSvg={handleExportSvg}
+          onExportPng={handleExportPng}
+          onFitToScreen={fitToScreen}
+          onCenterHead={resetViewport}
+          onClose={() => setBgContextMenu(null)}
         />
       )}
 

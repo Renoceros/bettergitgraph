@@ -2,7 +2,7 @@
   "name": "bettergitgraph",
   "displayName": "BetterGitGraph",
   "description": "Beautiful, interactive git graph for VS Code — built for everyone.",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "publisher": "Renoceros",
   "repository": {
     "type": "git",
@@ -63,9 +63,15 @@
       "properties": {
         "bettergitgraph.layoutDirection": {
           "type": "string",
-          "enum": ["TB", "LR"],
+          "enum": ["TB", "BT", "LR", "RL"],
           "default": "TB",
-          "description": "Graph layout direction: Top-to-Bottom or Left-to-Right."
+          "description": "Graph layout direction: Top-to-Bottom (TB), Bottom-to-Top (BT), Left-to-Right (LR), or Right-to-Left (RL)."
+        },
+        "bettergitgraph.dateFormat": {
+          "type": "string",
+          "enum": ["local", "relative", "iso"],
+          "default": "local",
+          "description": "Format for commit timestamps: Local Time (e.g. 19:45 GMT+8), Relative (e.g. 2h ago), or ISO."
         },
         "bettergitgraph.beginnerMode": {
           "type": "boolean",
