@@ -1,0 +1,250 @@
+import React, { useEffect, useRef } from 'react';
+import type { LayoutNode } from '../GraphCanvas/dag-layout';
+import type { GitOperation } from '../../../extension/operation-executor';
+
+export interface ContextMenuProps {
+  x: number;
+  y: number;
+  node: LayoutNode;
+  beginnerMode: boolean;
+  onSelectOperation: (op: GitOperation, requiresConfirm?: boolean) => void;
+  onClose: () => void;
+}
+
+export const ContextMenu: React.FC<ContextMenuProps> = ({
+  x,
+  y,
+  node,
+  beginnerMode,
+  onSelectOperation,
+  onClose,
+}) => {
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+
+    window.addEventListener('mousedown', handleOutsideClick);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('mousedown', handleOutsideClick);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose]);
+
+  const handleAction = (op: GitOperation, requiresConfirm = false) => {
+    onSelectOperation(op, requiresConfirm);
+    onClose();
+  };
+
+  const handleCreateBranchPrompt = () => {
+    const branchName = window.prompt('Enter new branch name:');
+    if (branchName?.trim()) {
+      handleAction({ op: 'CREATE_BRANCH', name: branchName.trim(), hash: node.hash }, false);
+    }
+  };
+
+  const handleTagPrompt = () => {
+    const tagName = window.prompt('Enter tag name:');
+    if (tagName?.trim()) {
+      handleAction({ op: 'TAG', name: tagName.trim(), hash: node.hash }, false);
+    }
+  };
+
+  // Adjust menu position if close to screen edge
+  const adjustedX = Math.min(x, window.innerWidth - 280);
+  const adjustedY = Math.min(y, window.innerHeight - 380);
+
+  return (
+    <div
+      ref={menuRef}
+      role="menu"
+      style={{
+        position: 'fixed',
+        left: adjustedX,
+        top: adjustedY,
+        width: 270,
+        backgroundColor: 'var(--vscode-menu-background, #252526)',
+        color: 'var(--vscode-menu-foreground, #cccccc)',
+        border: '1px solid var(--vscode-menu-border, #454545)',
+        borderRadius: 6,
+        boxShadow: '0 6px 18px rgba(0,0,0,0.4)',
+        padding: '6px 0',
+        zIndex: 1000,
+        fontSize: 12,
+        userSelect: 'none',
+      }}
+    >
+      <div
+        style={{
+          padding: '6px 12px',
+          fontSize: 11,
+          fontWeight: 'bold',
+          opacity: 0.6,
+          borderBottom: '1px solid var(--vscode-menu-separatorBackground, #3c3c3c)',
+          marginBottom: 4,
+        }}
+      >
+        Commit {node.shortHash}
+      </div>
+
+      <MenuItem
+        icon="🚀"
+        title="Checkout this commit"
+        beginnerSubtitle="Go to this point in time"
+        gitCommand={`git checkout ${node.shortHash}`}
+        beginnerMode={beginnerMode}
+        onClick={() => handleAction({ op: 'CHECKOUT', hash: node.hash }, false)}
+      />
+
+      <MenuItem
+        icon="🌿"
+        title="Create branch here…"
+        beginnerSubtitle="Start a new branch from here"
+        gitCommand={`git branch <name> ${node.shortHash}`}
+        beginnerMode={beginnerMode}
+        onClick={handleCreateBranchPrompt}
+      />
+
+      <MenuItem
+        icon="⏪"
+        title="Revert this commit"
+        beginnerSubtitle="Create a commit that undoes this change"
+        gitCommand={`git revert ${node.shortHash}`}
+        beginnerMode={beginnerMode}
+        onClick={() => handleAction({ op: 'REVERT', hash: node.hash }, beginnerMode)}
+      />
+
+      <MenuItem
+        icon="🍒"
+        title="Cherry-pick this commit"
+        beginnerSubtitle="Copy this commit to current branch"
+        gitCommand={`git cherry-pick ${node.shortHash}`}
+        beginnerMode={beginnerMode}
+        onClick={() => handleAction({ op: 'CHERRY_PICK', hash: node.hash }, beginnerMode)}
+      />
+
+      <MenuItem
+        icon="🏷️"
+        title="Tag this commit…"
+        beginnerSubtitle="Add a permanent name bookmark"
+        gitCommand={`git tag <name> ${node.shortHash}`}
+        beginnerMode={beginnerMode}
+        onClick={handleTagPrompt}
+      />
+
+      <div style={{ height: 1, backgroundColor: 'var(--vscode-menu-separatorBackground, #3c3c3c)', margin: '4px 0' }} />
+
+      <MenuItem
+        icon="⚠️"
+        title="Reset branch to here (Soft)"
+        beginnerSubtitle="Move branch pointer, keep changes staged"
+        gitCommand={`git reset --soft ${node.shortHash}`}
+        beginnerMode={beginnerMode}
+        onClick={() => handleAction({ op: 'RESET', mode: 'soft', hash: node.hash }, beginnerMode)}
+      />
+
+      <MenuItem
+        icon="⚠️"
+        title="Reset branch to here (Mixed)"
+        beginnerSubtitle="Move pointer, keep changes unstaged"
+        gitCommand={`git reset --mixed ${node.shortHash}`}
+        beginnerMode={beginnerMode}
+        onClick={() => handleAction({ op: 'RESET', mode: 'mixed', hash: node.hash }, beginnerMode)}
+      />
+
+      <MenuItem
+        icon="🚨"
+        title="Reset branch to here (Hard)"
+        beginnerSubtitle="DISCARD all uncommitted changes"
+        gitCommand={`git reset --hard ${node.shortHash}`}
+        beginnerMode={beginnerMode}
+        danger
+        onClick={() => handleAction({ op: 'RESET', mode: 'hard', hash: node.hash }, true)}
+      />
+
+      <div style={{ height: 1, backgroundColor: 'var(--vscode-menu-separatorBackground, #3c3c3c)', margin: '4px 0' }} />
+
+      <MenuItem
+        icon="📋"
+        title="Copy Commit SHA"
+        gitCommand={node.hash}
+        beginnerMode={false}
+        onClick={() => {
+          navigator.clipboard.writeText(node.hash);
+          onClose();
+        }}
+      />
+    </div>
+  );
+};
+
+interface MenuItemProps {
+  icon: string;
+  title: string;
+  beginnerSubtitle?: string;
+  gitCommand: string;
+  beginnerMode: boolean;
+  danger?: boolean;
+  onClick: () => void;
+}
+
+const MenuItem: React.FC<MenuItemProps> = ({
+  icon,
+  title,
+  beginnerSubtitle,
+  gitCommand,
+  beginnerMode,
+  danger,
+  onClick,
+}) => {
+  return (
+    <div
+      role="menuitem"
+      onClick={onClick}
+      style={{
+        padding: '6px 12px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+        cursor: 'pointer',
+        color: danger ? '#f14c4c' : 'inherit',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.backgroundColor = danger
+          ? 'rgba(241, 76, 76, 0.2)'
+          : 'var(--vscode-menu-selectionBackground, #04395e)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = 'transparent';
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span>{icon}</span>
+        <span style={{ fontWeight: 500 }}>{title}</span>
+      </div>
+      {beginnerMode && beginnerSubtitle && (
+        <span style={{ fontSize: 10, opacity: 0.7, paddingLeft: 22 }}>
+          {beginnerSubtitle}
+        </span>
+      )}
+      <span
+        style={{
+          fontSize: 10,
+          fontFamily: 'monospace',
+          opacity: 0.5,
+          paddingLeft: 22,
+        }}
+      >
+        {gitCommand}
+      </span>
+    </div>
+  );
+};

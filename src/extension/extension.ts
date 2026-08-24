@@ -29,7 +29,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('bettergitgraph.fetchAll', async () => {
       await gitData.fetchAll();
-      webviewManager?.refresh();
+      await webviewManager?.refresh();
     })
   );
 
@@ -47,8 +47,10 @@ export function activate(context: vscode.ExtensionContext): void {
     new vscode.RelativePattern(workspaceRoot, '.git/HEAD')
   );
   watcher.onDidChange(() => {
-    webviewManager?.refresh();
-    branchExplorer.refresh();
+    void (async () => {
+      await webviewManager?.refresh();
+      branchExplorer.refresh();
+    })();
   });
   context.subscriptions.push(watcher);
 

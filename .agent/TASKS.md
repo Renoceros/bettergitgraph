@@ -56,14 +56,14 @@ main
 | Milestone | Name | Status | Epic Branch | Blocked By |
 |-----------|------|--------|------------|------------|
 | M0 | Project Scaffold | ✅ Done | `main` | — |
-| M1 | Git Data Layer | 🔄 Next | `feat/m1/*` | M0 |
-| M2 | DAG Layout Engine | ⏳ Queued | `feat/m2/*` | M1 |
-| M3 | Webview Shell | ⏳ Queued | `feat/m3/*` | M1, M2 |
-| M4 | Branch Explorer Polish | ⏳ Queued | `feat/m4/*` | M3 |
-| M5 | Git Operations | ⏳ Queued | `feat/m5/*` | M3 |
-| M6 | Beginner Mode | ⏳ Queued | `feat/m6/*` | M5 |
-| M7 | Search & Filter | ⏳ Queued | `feat/m7/*` | M3 |
-| M8 | Diff View | ⏳ Queued | `feat/m8/*` | M3 |
+| M1 | Git Data Layer | ✅ Done | `feat/m1/*` | M0 |
+| M2 | DAG Layout Engine | ✅ Done | `feat/m2/*` | M1 |
+| M3 | Webview Shell | ✅ Done | `feat/m3/*` | M1, M2 |
+| M4 | Branch Explorer Polish | ✅ Done | `feat/m4/*` | M3 |
+| M5 | Git Operations | ✅ Done | `feat/m5/*` | M3 |
+| M6 | Beginner Mode | ✅ Done | `feat/m6/*` | M5 |
+| M7 | Search & Filter | 🔄 In Progress | `feat/m7/*` | M3 |
+| M8 | Diff View | 🔄 In Progress | `feat/m8/*` | M3 |
 | M9 | Polish & QA | ⏳ Queued | `feat/m9/*` | M4–M8 |
 | M10 | Release | ⏳ Queued | `release/v1.0.0` | M9 |
 

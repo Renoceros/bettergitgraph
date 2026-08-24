@@ -1,60 +1,53 @@
 # BetterGitGraph Agent Context
 
 ## Last Updated
-2026-08-24 — Initial scaffold by Antigravity agent (session: 334478c4)
+2026-08-24 — Sprints 1, 2, 3 implementation completed (M1, M2, M3, M4, M5, M6)
 
 ## Current State
 - **Branch:** main
-- **Last Milestone Completed:** M0 — Project scaffold ✅
-- **Next Milestone:** M1 — Git Data Layer (unit tests + simple-git integration hardening)
+- **Last Milestone Completed:** M3 — Webview Shell & Canvas Renderer ✅, M5 — Git Operations ✅, M6 — Beginner Mode ✅
+- **Next Milestone:** M7 — Search & Filter (polish), M8 — Diff View (polish), M9 — QA & Benchmarks
 
 ## What's Working
 - [x] M0 — Full project scaffold committed and pushed to GitHub
 - [x] Extension manifest (`package.json`) with all commands, keybindings, views, settings
 - [x] TypeScript configs (host + webview split)
-- [x] esbuild host bundler
-- [x] Vite webview bundler config
+- [x] esbuild host bundler + Vite webview bundler
 - [x] ESLint flat config (v9)
-- [x] `GitDataLayer` — full implementation with typed interfaces
-- [x] `WebviewManager` — panel lifecycle + postMessage protocol
+- [x] `GitDataLayer` — full implementation with unit-separator parsing, root commit diff-tree, tags, branches, stashes
+- [x] `WebviewManager` — panel lifecycle + postMessage bridge + file diff / commit files handlers
 - [x] `BranchExplorerProvider` — recursive remote ref file tree
 - [x] `BranchColorEngine` — FNV-1a deterministic colors
-- [x] `.vscode/` — launch, tasks, extensions
-- [x] `.github/workflows/ci.yml` — lint + build + test pipeline
-- [x] `Documentation/` — PRD and TECH_DOCS in repo
-- [ ] M1 — Unit tests for GitDataLayer
-- [ ] M2 — DAG Layout Engine (dagre)
-- [ ] M3 — React webview shell (replace placeholder)
+- [x] `DAGLayoutEngine` — Sugiyama layout via Dagre with bezier splines, branch lanes, and time ranking
+- [x] `CanvasRenderer` — high-DPI HTML5 canvas renderer with viewport culling, pulse glow rings, double-ring merges, ref badges
+- [x] `GraphCanvas` — interactive React canvas with drag pan, cursor-centered wheel zoom, node click & hover, floating controls
+- [x] `ContextMenu` — right-click node context menu with beginner-friendly descriptions and git command subtitles
+- [x] `ConfirmDialog` — confirmation modal for destructive operations (Hard Reset) and beginner mode
+- [x] `GitOperationExecutor` — safe execution of reset, checkout, revert, cherry-pick, branch/tag creation with audit logging
+- [x] `CommitDetail` & `FileList` — commit metadata panel with parent navigation pills and click-to-diff
+- [x] `SearchBar` — search filtering, branch counters, layout direction toggle (TB/LR), beginner mode switch
+- [x] `GlossaryTooltip` & `GIT_GLOSSARY` — beginner mode hover definitions for Git terminology
+- [x] Full unit test suite (23 passing tests in Vitest)
+- [x] Sample Git test fixture repository (`scripts/create-fixture-repo.sh`)
 
 ## Active Design Decisions
 - Using **FNV-1a** (not SHA-256) for branch color hashing — see ADR-001
 - **Canvas API** (not SVG) for graph rendering — see ADR-002
 - **Dagre** for layout — see ADR-003
+- **Zustand** for state store with MessageBus bridge — see ADR-004
 - Extension host and webview are **separate TypeScript projects** (`tsconfig.json` vs `tsconfig.webview.json`)
 
 ## Known Issues / TODOs
-- [ ] `resources/icon.png` placeholder needed before marketplace publish
-- [ ] `test-fixtures/sample-repo` needs to be created for integration tests
-- [ ] `src/extension/operation-executor.ts` not yet implemented (M5)
-- [ ] Webview `src/webview/main.tsx` is a placeholder — full React app in M3
-- [ ] Vite build deps (React, Zustand, dagre) not yet installed
+- [ ] `resources/icon.png` (128x128) asset to be generated for marketplace release
+- [ ] Extension integration tests with `@vscode/test-electron`
 
 ## Agent Instructions
+
+> [!IMPORTANT]
+> Read `.agent/AGENT_PROTOCOL.md` before your first session. It is the law.
+> It defines: session lifecycle, branch workflow, testing protocol, bug catching, PR rules, taboos, and emergency procedures.
+
 When starting a new session on this repo:
 1. **Read this file first** — understand current state before touching anything.
-2. **Read `.agent/TASKS.md`** — find the next open task. Each task card specifies:
-   - `Branch` — the branch name to create/checkout
-   - `Branch from` — which branch to base your work on
-   - `Layer` — which layer of the codebase to touch
-   - `Files` — exact files to create or modify
-   - **What done looks like** — acceptance criteria; only mark done when ALL criteria pass
-3. **Read the referenced source files** listed in the task card before editing.
-4. **Create the branch** specified in the task card before writing any code.
-5. **Do the work** — implementation details are in TECH_DOCS.md §5 and inline code comments.
-6. **Verify:** run `npm run check-types && npm run lint` before any commit.
-7. **After finishing:**
-   - Mark the task's checkbox `[x]` in TASKS.md and update its status row in the Milestone Roadmap table
-   - Update `CONTEXT.md`: bump "Last Updated", check off completed items, update "Next Milestone"
-   - Add any new ADRs to `DECISIONS.md`
-   - Open a PR (or push the branch) — do not merge to `main` yourself
-   - Use conventional commit format: `feat(git-data): implement getCommitGraph`
+2. **Read `.agent/TASKS.md`** — find the next open task.
+3. **Verify:** run `npm run test:unit && npm run check-types && npm run compile` before any commit.

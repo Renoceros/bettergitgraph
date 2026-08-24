@@ -12,10 +12,13 @@
  */
 export class BranchColorEngine {
   private overrides = new Map<string, string>();
+  private theme: 'dark' | 'light' | 'high-contrast';
 
   constructor(
-    private readonly theme: 'dark' | 'light' | 'high-contrast' = 'dark'
-  ) {}
+    theme: 'dark' | 'light' | 'high-contrast' = 'dark'
+  ) {
+    this.theme = theme;
+  }
 
   getColor(branchName: string): string {
     if (this.overrides.has(branchName)) {
@@ -36,7 +39,7 @@ export class BranchColorEngine {
   }
 
   setTheme(theme: 'dark' | 'light' | 'high-contrast'): void {
-    (this as { theme: typeof theme }).theme = theme;
+    this.theme = theme;
   }
 
   getAllColors(branchNames: string[]): Map<string, string> {
