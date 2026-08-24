@@ -11,6 +11,7 @@ type WebviewToHostMessage =
   | { type: 'REQUEST_COMMIT_FILES'; payload: { hash: string } }
   | { type: 'REQUEST_DIFF'; payload: { hash: string; filePath: string } }
   | { type: 'OPEN_DIFF'; payload: { hash: string; filePath: string } }
+  | { type: 'SEARCH_CHANGED_FILES'; payload: { query: string } }
   | { type: 'FETCH_ALL' }
   | { type: 'EXECUTE_OPERATION'; payload: GitOperation };
 
@@ -98,6 +99,15 @@ export class WebviewManager {
             await this.panel?.webview.postMessage({
               type: 'DIFF_RESULT',
               payload: { diff, hash: msg.payload.hash, filePath: msg.payload.filePath },
+            });
+            break;
+          }
+
+          case 'SEARCH_CHANGED_FILES': {
+            const matchingHashes = await this.gitData.findCommitsTouchingFile(msg.payload.query);
+            await this.panel?.webview.postMessage({
+              type: 'SEARCH_CHANGED_FILES_RESULT',
+              payload: { query: msg.payload.query, matchingHashes },
             });
             break;
           }

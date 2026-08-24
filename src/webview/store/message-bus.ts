@@ -9,7 +9,8 @@ export type HostToWebviewMessage =
   | { type: 'DIFF_RESULT'; payload: { hash: string; filePath: string; diff: string } }
   | { type: 'FETCH_COMPLETE'; payload: FetchResult }
   | { type: 'HIGHLIGHT_BRANCH'; payload: { branch: string } }
-  | { type: 'THEME_CHANGE'; payload: { theme: 'dark' | 'light' | 'high-contrast' } };
+  | { type: 'THEME_CHANGE'; payload: { theme: 'dark' | 'light' | 'high-contrast' } }
+  | { type: 'SEARCH_CHANGED_FILES_RESULT'; payload: { query: string; matchingHashes: string[] } };
 
 export type WebviewToHostMessage =
   | { type: 'READY' }
@@ -17,6 +18,7 @@ export type WebviewToHostMessage =
   | { type: 'REQUEST_COMMIT_FILES'; payload: { hash: string } }
   | { type: 'REQUEST_DIFF'; payload: { hash: string; filePath: string } }
   | { type: 'OPEN_DIFF'; payload: { hash: string; filePath: string } }
+  | { type: 'SEARCH_CHANGED_FILES'; payload: { query: string } }
   | { type: 'FETCH_ALL' }
   | { type: 'EXECUTE_OPERATION'; payload: unknown };
 
@@ -96,6 +98,10 @@ class MessageBus {
 
       case 'THEME_CHANGE':
         store.setTheme(message.payload.theme);
+        break;
+
+      case 'SEARCH_CHANGED_FILES_RESULT':
+        store.addFileSearchMatches(message.payload.query, message.payload.matchingHashes);
         break;
     }
   };

@@ -3,6 +3,7 @@ import type { CommitNode, BranchInfo, ChangedFile, FetchResult } from '../../ext
 import type { GraphLayout, LayoutDirection, DateFormat } from '../components/GraphCanvas/dag-layout';
 import { DAGLayoutEngine } from '../components/GraphCanvas/dag-layout';
 import { BranchColorEngine } from '../../extension/color-engine';
+import { messageBus } from './message-bus';
 
 // ─── App State Types ───────────────────────────────────────────────────────────
 
@@ -57,6 +58,7 @@ export interface AppState {
   setHighlightedBranch: (branch: string | null) => void;
   setCommitDetail: (detail: Partial<CommitFileDetail>) => void;
   setSearchQuery: (query: string) => void;
+  addFileSearchMatches: (query: string, hashes: string[]) => void;
   setAuthorFilter: (authors: string[]) => void;
   setBranchFilter: (branches: string[]) => void;
   setViewMode: (mode: 'topo' | 'temporal') => void;
@@ -75,6 +77,8 @@ export interface AppState {
 
 const layoutEngine = new DAGLayoutEngine();
 const colorEngine = new BranchColorEngine('dark');
+const commitFilesCache = new Map<string, ChangedFile[]>();
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 export const useAppStore = create<AppState>((set, get) => ({
   commits: [],
@@ -152,12 +156,16 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setHighlightedBranch: (branch) => set({ highlightedBranch: branch }),
 
-  setCommitDetail: (detail) =>
+  setCommitDetail: (detail) => {
+    if (detail.hash && detail.files && detail.files.length > 0) {
+      commitFilesCache.set(detail.hash, detail.files);
+    }
     set((state) => ({
       commitDetail: state.commitDetail
         ? { ...state.commitDetail, ...detail }
         : null,
-    })),
+    }));
+  },
 
   setSearchQuery: (query) => {
     const trimmed = query.trim().toLowerCase();
@@ -169,7 +177,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { commits, branches, layout } = get();
     const matches = new Set<string>();
 
-    // Find any branches whose name matches query
+    // 1. Find any branches whose name matches query
     const matchingBranchNames = new Set<string>();
     for (const b of branches) {
       if (b.name.toLowerCase().includes(trimmed)) {
@@ -177,6 +185,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     }
 
+    // 2. Direct matches against commit metadata + cached changed files
     for (const c of commits) {
       const layoutNode = layout?.nodeMap.get(c.hash);
       const nodeBranch = layoutNode?.branchName?.toLowerCase() || '';
@@ -184,6 +193,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       const matchesBranch =
         (nodeBranch && nodeBranch.includes(trimmed)) ||
         matchingBranchNames.has(nodeBranch);
+
+      const cachedFiles = commitFilesCache.get(c.hash);
+      const matchesCachedFile = cachedFiles?.some((f) =>
+        f.path.toLowerCase().includes(trimmed)
+      );
 
       const matchesDirect =
         c.subject.toLowerCase().includes(trimmed) ||
@@ -193,12 +207,35 @@ export const useAppStore = create<AppState>((set, get) => ({
         c.hash.toLowerCase().includes(trimmed) ||
         c.refs.some((r) => r.toLowerCase().includes(trimmed));
 
-      if (matchesDirect || matchesBranch) {
+      if (matchesDirect || matchesBranch || matchesCachedFile) {
         matches.add(c.hash);
       }
     }
 
     set({ searchQuery: query, filteredHashes: matches });
+
+    // 3. Dispatch debounced search for changed files in Git history
+    if (searchDebounceTimer) {
+      clearTimeout(searchDebounceTimer);
+    }
+    if (trimmed.length >= 2) {
+      searchDebounceTimer = setTimeout(() => {
+        messageBus.send({ type: 'SEARCH_CHANGED_FILES', payload: { query: trimmed } });
+      }, 250);
+    }
+  },
+
+  addFileSearchMatches: (query, hashes) => {
+    const currentQuery = get().searchQuery.trim().toLowerCase();
+    if (query !== currentQuery || hashes.length === 0) return;
+
+    set((state) => {
+      const updated = new Set(state.filteredHashes ?? []);
+      for (const h of hashes) {
+        updated.add(h);
+      }
+      return { filteredHashes: updated };
+    });
   },
 
   setAuthorFilter: (authors) => set({ authorFilter: authors }),

@@ -262,6 +262,33 @@ export class GitDataLayer {
   }
 
   /**
+   * Finds all commit hashes in repository history that modified, added, or deleted files matching a path/pattern.
+   */
+  async findCommitsTouchingFile(pattern: string, maxCount = 2000): Promise<string[]> {
+    const cleanPattern = pattern.trim();
+    if (!cleanPattern) return [];
+
+    try {
+      const output = await this.git.raw([
+        'log',
+        '--all',
+        '-n',
+        String(maxCount),
+        '--format=%H',
+        '--',
+        `*${cleanPattern}*`,
+      ]);
+
+      return output
+        .split('\n')
+        .map((h) => h.trim())
+        .filter((h) => h.length > 0);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
    * Unified diff for a file at a commit.
    * Handles root commits (diff against empty tree) cleanly.
    */

@@ -9,6 +9,8 @@ interface FileListProps {
 }
 
 export const FileList: React.FC<FileListProps> = ({ hash, files, loading }) => {
+  const [filterQuery, setFilterQuery] = React.useState('');
+
   if (loading) {
     return (
       <div style={{ padding: '16px 0', opacity: 0.7, fontSize: 12 }}>
@@ -24,6 +26,10 @@ export const FileList: React.FC<FileListProps> = ({ hash, files, loading }) => {
       </div>
     );
   }
+
+  const filtered = filterQuery.trim()
+    ? files.filter((f) => f.path.toLowerCase().includes(filterQuery.trim().toLowerCase()))
+    : files;
 
   const handleFileClick = (filePath: string) => {
     messageBus.send({
@@ -49,7 +55,32 @@ export const FileList: React.FC<FileListProps> = ({ hash, files, loading }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
-      {files.map((file, idx) => (
+      {files.length >= 3 && (
+        <input
+          type="text"
+          value={filterQuery}
+          onChange={(e) => setFilterQuery(e.target.value)}
+          placeholder={`Filter ${files.length} changed files…`}
+          style={{
+            width: '100%',
+            backgroundColor: 'var(--vscode-input-background, #3c3c3c)',
+            color: 'var(--vscode-input-foreground, #cccccc)',
+            border: '1px solid var(--vscode-input-border, #454545)',
+            borderRadius: 4,
+            padding: '4px 8px',
+            fontSize: 11,
+            outline: 'none',
+            boxSizing: 'border-box',
+            marginBottom: 4,
+          }}
+        />
+      )}
+      {filtered.length === 0 && (
+        <div style={{ padding: '8px 4px', fontSize: 11, opacity: 0.6 }}>
+          No files matching "{filterQuery}"
+        </div>
+      )}
+      {filtered.map((file, idx) => (
         <div
           key={`${file.path}-${idx}`}
           onClick={() => handleFileClick(file.path)}

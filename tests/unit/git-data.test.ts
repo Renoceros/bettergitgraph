@@ -102,4 +102,15 @@ describe('GitDataLayer', () => {
     const diff = await gitData.getFileDiff(linearCommit!.hash, 'index.js');
     expect(diff).toContain("console.log('init');");
   });
+
+  it('finds commits touching a specific file pattern across git history', async () => {
+    const hashes = await gitData.findCommitsTouchingFile('README.md');
+    expect(hashes.length).toBeGreaterThan(0);
+
+    const indexHashes = await gitData.findCommitsTouchingFile('index.js');
+    expect(indexHashes.length).toBeGreaterThan(0);
+
+    const nonExistent = await gitData.findCommitsTouchingFile('non-existent-xyz-file.abc');
+    expect(nonExistent).toEqual([]);
+  });
 });

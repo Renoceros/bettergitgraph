@@ -141,7 +141,7 @@ export const SearchBar: React.FC = () => {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Filter by title, author, branch, SHA…"
+          placeholder="Filter by title, author, branch, file, SHA…"
           style={{
             width: '100%',
             backgroundColor: 'var(--vscode-input-background, #3c3c3c)',
