@@ -11,6 +11,7 @@ import {
   IconReset,
   IconCopy,
   IconCheck,
+  IconExternalLink,
 } from '../Icons/Icons';
 
 export interface NodePopupProps {
@@ -304,14 +305,18 @@ export const NodePopup: React.FC<NodePopupProps> = ({
                 color: '#4ec9b0',
                 borderColor: '#4ec9b0',
                 backgroundColor: 'rgba(78, 201, 176, 0.1)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
               }}
             >
+              <IconExternalLink size={12} color="#4ec9b0" />
               <span>
                 {node.nodeType === 'pr' && node.prNumber
-                  ? `🌐 PR #${node.prNumber} ↗`
+                  ? `PR #${node.prNumber}`
                   : node.nodeType === 'issue' && node.issueNumber
-                  ? `🌐 Issue #${node.issueNumber} ↗`
-                  : `🌐 Open on Web ↗`}
+                  ? `Issue #${node.issueNumber}`
+                  : `Open on Web`}
               </span>
             </button>
           )}

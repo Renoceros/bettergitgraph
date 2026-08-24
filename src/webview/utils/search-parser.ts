@@ -5,17 +5,19 @@ export interface ParsedSearchQuery {
   branches: string[];
   files: string[];
   messages: string[];
-  types: ('commit' | 'merge' | 'pr' | 'issue' | 'stash' | 'initial' | 'octopus')[];
+  types: string[];
+  hashes: string[];
   rawTerms: string[];
 }
 
 /**
  * Parses user input into structured search tokens supporting:
- * - @author or @username
+ * - @author or author:name
  * - #branch or branch:name
- * - file:path or /path
- * - msg:text or "exact phrase"
- * - is:pr, is:issue, is:merge, is:initial
+ * - file:path or path:path or /path
+ * - msg:text or title:text or subject:text or "exact phrase"
+ * - is:pr, is:issue, is:merge, is:initial, is:root, is:stash, is:head
+ * - sha:hash or hash:hash
  * - un-prefixed terms (fallback global search)
  */
 export function parseSearchQuery(query: string): ParsedSearchQuery {
@@ -28,6 +30,7 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
     files: [],
     messages: [],
     types: [],
+    hashes: [],
     rawTerms: [],
   };
 
@@ -52,7 +55,7 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
       result.isPrefixSearch = true;
     }
     // 2. Branch: #branch or branch:name
-    else if (token.startsWith('#') && token.length > 1 && !/^\d+$/.test(token.slice(1))) {
+    else if (token.startsWith('#') && token.length > 1) {
       result.branches.push(lower.slice(1));
       result.isPrefixSearch = true;
     } else if (lower.startsWith('branch:') && token.length > 7) {
@@ -70,34 +73,40 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
       result.files.push(lower.slice(1));
       result.isPrefixSearch = true;
     }
-    // 4. Commit Message: msg:text or quoted strings
+    // 4. Commit Message: msg:text, title:text, subject:text, or quoted strings
     else if (lower.startsWith('msg:') && token.length > 4) {
       result.messages.push(lower.slice(4));
+      result.isPrefixSearch = true;
+    } else if (lower.startsWith('title:') && token.length > 6) {
+      result.messages.push(lower.slice(6));
+      result.isPrefixSearch = true;
+    } else if (lower.startsWith('subject:') && token.length > 8) {
+      result.messages.push(lower.slice(8));
       result.isPrefixSearch = true;
     } else if (match[1] || match[2]) {
       // Quoted string -> message search
       result.messages.push(lower);
       result.isPrefixSearch = true;
     }
-    // 5. Node Type: is:pr, is:issue, is:merge, is:initial, is:commit, is:stash
+    // 5. Node Type: is:pr, is:issue, is:merge, is:initial, is:root, is:stash, is:head
     else if (lower.startsWith('is:') && token.length > 3) {
-      const typeVal = lower.slice(3) as ParsedSearchQuery['types'][number];
-      if (['commit', 'merge', 'pr', 'issue', 'stash', 'initial', 'octopus'].includes(typeVal)) {
-        result.types.push(typeVal);
-        result.isPrefixSearch = true;
-      } else {
-        result.rawTerms.push(lower);
-      }
+      const typeVal = lower.slice(3);
+      result.types.push(typeVal);
+      result.isPrefixSearch = true;
     } else if (lower.startsWith('type:') && token.length > 5) {
-      const typeVal = lower.slice(5) as ParsedSearchQuery['types'][number];
-      if (['commit', 'merge', 'pr', 'issue', 'stash', 'initial', 'octopus'].includes(typeVal)) {
-        result.types.push(typeVal);
-        result.isPrefixSearch = true;
-      } else {
-        result.rawTerms.push(lower);
-      }
+      const typeVal = lower.slice(5);
+      result.types.push(typeVal);
+      result.isPrefixSearch = true;
     }
-    // 6. General term
+    // 6. SHA: sha:hash or hash:hash
+    else if (lower.startsWith('sha:') && token.length > 4) {
+      result.hashes.push(lower.slice(4));
+      result.isPrefixSearch = true;
+    } else if (lower.startsWith('hash:') && token.length > 5) {
+      result.hashes.push(lower.slice(5));
+      result.isPrefixSearch = true;
+    }
+    // 7. General term
     else {
       result.rawTerms.push(lower);
     }

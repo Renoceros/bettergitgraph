@@ -159,3 +159,21 @@ export const IconCheck: React.FC<IconProps> = ({ size = 14, color = 'currentColo
     />
   </svg>
 );
+
+export const IconExternalLink: React.FC<IconProps> = ({ size = 14, color = 'currentColor', style }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" style={{ display: 'inline-block', verticalAlign: 'middle', ...style }}>
+    <path
+      d="M1.5 1.5H7V3H3V13H13V9H14.5V14.5H1.5V1.5ZM9.5 1.5H14.5V6.5H13V4.06L7.53 9.53L6.47 8.47L11.94 3H9.5V1.5Z"
+      fill={color}
+    />
+  </svg>
+);
+
+export const IconGlobe: React.FC<IconProps> = ({ size = 14, color = 'currentColor', style }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" style={{ display: 'inline-block', verticalAlign: 'middle', ...style }}>
+    <path
+      d="M8 1C4.13 1 1 4.13 1 8C1 11.87 4.13 15 8 15C11.87 15 15 11.87 15 8C15 4.13 11.87 1 8 1ZM8 2.25C9.07 2.25 10.05 2.56 10.9 3.09C10.74 3.73 10.37 4.7 9.5 5.5C8.42 6.5 7.08 7.08 5.75 7.42C5.58 6.58 5.5 5.75 5.5 5C5.5 3.67 6.42 2.42 8 2.25ZM2.35 7.25C3.33 7.08 4.5 6.75 5.42 6C6.17 5.33 6.67 4.42 6.83 3.5C4.75 4.17 3.08 5.5 2.35 7.25ZM2.25 8C2.25 7.83 2.26 7.67 2.28 7.5C3.33 7.5 4.75 7.67 6 8.5C7.25 9.33 8 10.5 8.25 11.75C8.25 11.83 8.25 11.92 8.25 12C8.25 12.58 8.08 13.08 7.83 13.58C4.67 13.17 2.25 10.83 2.25 8ZM8.83 13.67C9.25 13 9.5 12.17 9.5 11.25C9.5 10.33 9.08 9.42 8.33 8.75C7.67 8.17 6.75 7.75 5.75 7.58C7.17 7.25 8.67 6.58 9.83 5.5C10.5 4.83 11 4 11.33 3.17C12.83 4.25 13.75 6 13.75 8C13.75 9.75 12.92 11.33 11.58 12.33C10.75 13.08 9.83 13.5 8.83 13.67Z"
+      fill={color}
+    />
+  </svg>
+);

@@ -11,6 +11,7 @@ import {
   IconReset,
   IconDanger,
   IconCopy,
+  IconExternalLink,
 } from '../Icons/Icons';
 
 export interface ContextMenuProps {
@@ -197,7 +198,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       {remoteInfo && (
         <>
           <MenuItem
-            icon={<span>🌐</span>}
+            icon={<IconExternalLink size={14} color="#4ec9b0" />}
             title={
               node.nodeType === 'pr' && node.prNumber
                 ? `Open PR #${node.prNumber} on ${providerName}`
@@ -220,7 +221,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
             }}
           />
           <MenuItem
-            icon={<span>🌿</span>}
+            icon={<IconBranch size={14} color="#569cd6" />}
             title={`Open Branch '${node.branchName}' on ${providerName}`}
             beginnerSubtitle="View branch tree in your web browser"
             gitCommand={`${remoteInfo.webUrl}/tree/${node.branchName}`}

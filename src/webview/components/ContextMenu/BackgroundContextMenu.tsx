@@ -5,6 +5,7 @@ import {
   IconTimeline,
   IconCheck,
   IconReset,
+  IconExternalLink,
 } from '../Icons/Icons';
 
 export interface BackgroundContextMenuProps {
@@ -168,7 +169,9 @@ export const BackgroundContextMenu: React.FC<BackgroundContextMenuProps> = ({
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--vscode-menu-selectionBackground, #04395e)')}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
           >
-            <span style={{ display: 'flex', alignItems: 'center' }}>🌐</span>
+            <span style={{ display: 'flex', alignItems: 'center' }}>
+              <IconExternalLink size={14} color="#4ec9b0" />
+            </span>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <span style={{ fontWeight: 600 }}>Open Repository on Web</span>
               <span style={{ fontSize: 10, opacity: 0.6 }}>{remoteInfo.webUrl}</span>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAppStore } from '../../store/store';
 import { messageBus } from '../../store/message-bus';
-import { IconTree, IconTimeline, IconBook, IconFetch } from '../Icons/Icons';
+import { IconTree, IconTimeline, IconBook, IconFetch, IconExternalLink } from '../Icons/Icons';
 import type { LayoutDirection, DateFormat } from '../GraphCanvas/dag-layout';
 
 export const SearchBar: React.FC = () => {
@@ -63,24 +63,24 @@ export const SearchBar: React.FC = () => {
   const getDirectionLabel = (dir: LayoutDirection): string => {
     switch (dir) {
       case 'TB':
-        return '↓ Top-Bottom';
+        return 'Top-to-Bottom';
       case 'BT':
-        return '↑ Bottom-Top';
+        return 'Bottom-to-Top';
       case 'LR':
-        return '→ Left-Right';
+        return 'Left-to-Right';
       case 'RL':
-        return '← Right-Left';
+        return 'Right-to-Left';
     }
   };
 
   const getDateFormatLabel = (df: DateFormat): string => {
     switch (df) {
       case 'local':
-        return '🕒 Local Time';
+        return 'Local Time';
       case 'relative':
-        return '⏱️ Relative';
+        return 'Relative Time';
       case 'iso':
-        return '📅 ISO Date';
+        return 'ISO Date';
     }
   };
 
@@ -116,7 +116,7 @@ export const SearchBar: React.FC = () => {
               <span>•</span>
               <button
                 onClick={openRepoOnWeb}
-                title={`Open remote repository on ${getProviderName()}: ${remoteInfo.webUrl}`}
+                title={`Open repository on ${getProviderName()}: ${remoteInfo.webUrl}`}
                 style={{
                   background: 'rgba(255, 255, 255, 0.08)',
                   border: '1px solid var(--vscode-button-secondaryBorder, #454545)',
@@ -128,10 +128,11 @@ export const SearchBar: React.FC = () => {
                   fontWeight: 500,
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 4,
+                  gap: 5,
                 }}
               >
-                🌐 {getProviderName()} ↗
+                <IconExternalLink size={12} color="#4ec9b0" />
+                <span>{getProviderName()}</span>
               </button>
             </>
           )}

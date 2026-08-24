@@ -86,6 +86,7 @@ export interface AppState {
 const layoutEngine = new DAGLayoutEngine();
 const colorEngine = new BranchColorEngine('dark');
 const commitFilesCache = new Map<string, ChangedFile[]>();
+const fileSearchCache = new Map<string, Set<string>>();
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -193,7 +194,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const matches = new Set<string>();
 
     if (parsed.isPrefixSearch) {
-      // ── Scoped Prefix Search Mode (@author, #branch, file:, msg:, is:) ───
+      // ── Scoped Prefix Search Mode (@author, #branch, file:, msg:, is:, sha:) ───
       const matchingBranchNames = new Set<string>();
       for (const b of branches) {
         const bName = b.name.toLowerCase();
@@ -202,11 +203,20 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
       }
 
+      // Collect any cached file search hashes for the queried file tokens
+      const matchedFileHashes = new Set<string>();
+      for (const fileToken of parsed.files) {
+        const cached = fileSearchCache.get(fileToken.toLowerCase());
+        if (cached) {
+          for (const h of cached) matchedFileHashes.add(h);
+        }
+      }
+
       for (const c of commits) {
         const layoutNode = layout?.nodeMap.get(c.hash);
         const nodeBranch = layoutNode?.branchName?.toLowerCase() || '';
 
-        // Author filter (@renoce)
+        // 1. Author filter (@renoce or author:renoce)
         const matchAuthor =
           parsed.authors.length === 0 ||
           parsed.authors.some(
@@ -215,7 +225,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               c.authorEmail.toLowerCase().includes(a)
           );
 
-        // Branch filter (#feature, branch:404)
+        // 2. Branch filter (#feature, branch:404)
         const matchBranch =
           parsed.branches.length === 0 ||
           matchingBranchNames.has(nodeBranch) ||
@@ -225,26 +235,59 @@ export const useAppStore = create<AppState>((set, get) => ({
               c.refs.some((r) => r.toLowerCase().includes(b))
           );
 
-        // Message filter (msg:fix, "exact phrase")
+        // 3. Message filter (msg:fix, title:fix, subject:fix, "exact phrase")
         const matchMsg =
           parsed.messages.length === 0 ||
           parsed.messages.some((m) => c.subject.toLowerCase().includes(m));
 
-        // Node Type filter (is:pr, is:issue, is:merge, is:initial)
+        // 4. Node Type filter (is:pr, is:issue, is:merge, is:initial, is:head, is:stash)
         const matchType =
           parsed.types.length === 0 ||
-          (layoutNode && parsed.types.includes(layoutNode.nodeType as any));
+          parsed.types.some((t) => {
+            if (t === 'pr' || t === 'mr' || t === 'pull') {
+              return layoutNode?.nodeType === 'pr' || layoutNode?.prNumber !== undefined;
+            }
+            if (t === 'issue' || t === 'bug' || t === 'task') {
+              return layoutNode?.nodeType === 'issue' || layoutNode?.issueNumber !== undefined;
+            }
+            if (t === 'merge' || t === 'octopus') {
+              return layoutNode?.isMerge === true || layoutNode?.nodeType === 'merge' || layoutNode?.nodeType === 'octopus';
+            }
+            if (t === 'initial' || t === 'root') {
+              return layoutNode?.nodeType === 'initial';
+            }
+            if (t === 'stash') {
+              return layoutNode?.nodeType === 'stash';
+            }
+            if (t === 'head') {
+              return layoutNode?.isHead === true;
+            }
+            if (t === 'commit') {
+              return layoutNode?.nodeType === 'commit';
+            }
+            return layoutNode?.nodeType === t;
+          });
 
-        // Cached file match (file:auth)
+        // 5. SHA / Hash filter (sha:abc, hash:123)
+        const matchHash =
+          parsed.hashes.length === 0 ||
+          parsed.hashes.some(
+            (h) =>
+              c.hash.toLowerCase().startsWith(h) ||
+              c.shortHash.toLowerCase().startsWith(h)
+          );
+
+        // 6. Changed file match (file:readme, path:dag-layout, /components)
         const cachedFiles = commitFilesCache.get(c.hash);
-        const matchCachedFile =
+        const matchFile =
           parsed.files.length === 0 ||
+          matchedFileHashes.has(c.hash) ||
           (cachedFiles &&
             parsed.files.some((f) =>
               cachedFiles.some((cf) => cf.path.toLowerCase().includes(f))
             ));
 
-        // General terms within prefix search
+        // 7. General terms within prefix query
         const matchRawTerms =
           parsed.rawTerms.length === 0 ||
           parsed.rawTerms.every(
@@ -260,21 +303,22 @@ export const useAppStore = create<AppState>((set, get) => ({
           matchBranch &&
           matchMsg &&
           matchType &&
-          matchCachedFile &&
+          matchHash &&
+          matchFile &&
           matchRawTerms
         ) {
           matches.add(c.hash);
         }
       }
 
-      // If file search criteria are present, dispatch backend file search
+      // If file search criteria are present, dispatch backend file search if not cached yet
       if (parsed.files.length > 0) {
         if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
         searchDebounceTimer = setTimeout(() => {
           for (const fileToken of parsed.files) {
             messageBus.send({ type: 'SEARCH_CHANGED_FILES', payload: { query: fileToken } });
           }
-        }, 250);
+        }, 150);
       }
     } else {
       // ── Universal Fuzzy Search Mode ───
@@ -287,6 +331,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
       }
 
+      const cachedFileHashes = fileSearchCache.get(lower);
+
       for (const c of commits) {
         const layoutNode = layout?.nodeMap.get(c.hash);
         const nodeBranch = layoutNode?.branchName?.toLowerCase() || '';
@@ -296,9 +342,9 @@ export const useAppStore = create<AppState>((set, get) => ({
           matchingBranchNames.has(nodeBranch);
 
         const cachedFiles = commitFilesCache.get(c.hash);
-        const matchesCachedFile = cachedFiles?.some((f) =>
-          f.path.toLowerCase().includes(lower)
-        );
+        const matchesCachedFile =
+          (cachedFileHashes && cachedFileHashes.has(c.hash)) ||
+          cachedFiles?.some((f) => f.path.toLowerCase().includes(lower));
 
         const matchesDirect =
           c.subject.toLowerCase().includes(lower) ||
@@ -318,7 +364,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (lower.length >= 2) {
         searchDebounceTimer = setTimeout(() => {
           messageBus.send({ type: 'SEARCH_CHANGED_FILES', payload: { query: lower } });
-        }, 250);
+        }, 200);
       }
     }
 
@@ -326,16 +372,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   addFileSearchMatches: (query, hashes) => {
-    const currentQuery = get().searchQuery.trim().toLowerCase();
-    if (query !== currentQuery || hashes.length === 0) return;
+    const cleanToken = query.trim().toLowerCase();
+    fileSearchCache.set(cleanToken, new Set(hashes));
 
-    set((state) => {
-      const updated = new Set(state.filteredHashes ?? []);
-      for (const h of hashes) {
-        updated.add(h);
-      }
-      return { filteredHashes: updated };
-    });
+    // Re-evaluate active search query so matching commits immediately illuminate
+    const currentQuery = get().searchQuery;
+    if (currentQuery) {
+      get().setSearchQuery(currentQuery);
+    }
   },
 
   setAuthorFilter: (authors) => set({ authorFilter: authors }),

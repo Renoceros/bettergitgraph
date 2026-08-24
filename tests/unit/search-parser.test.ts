@@ -66,6 +66,32 @@ describe('search-parser', () => {
     expect(parsed3.types).toEqual(['merge']);
   });
 
+  it('parses sha:hash and hash:hash queries', () => {
+    const parsed = parseSearchQuery('sha:431511d');
+    expect(parsed.isPrefixSearch).toBe(true);
+    expect(parsed.hashes).toEqual(['431511d']);
+
+    const parsed2 = parseSearchQuery('hash:cacde46');
+    expect(parsed2.isPrefixSearch).toBe(true);
+    expect(parsed2.hashes).toEqual(['cacde46']);
+  });
+
+  it('parses numeric branches with #', () => {
+    const parsed = parseSearchQuery('#404');
+    expect(parsed.isPrefixSearch).toBe(true);
+    expect(parsed.branches).toEqual(['404']);
+  });
+
+  it('parses title: and subject: prefixes', () => {
+    const parsed = parseSearchQuery('title:release');
+    expect(parsed.isPrefixSearch).toBe(true);
+    expect(parsed.messages).toEqual(['release']);
+
+    const parsed2 = parseSearchQuery('subject:hotfix');
+    expect(parsed2.isPrefixSearch).toBe(true);
+    expect(parsed2.messages).toEqual(['hotfix']);
+  });
+
   it('parses compound queries with multiple prefixes', () => {
     const parsed = parseSearchQuery('@renoce is:pr file:dag-layout #main');
     expect(parsed.isPrefixSearch).toBe(true);
