@@ -1,0 +1,10 @@
+# Never copy these into the image context
+node_modules/
+dist/
+out/
+.vscode-test/
+*.vsix
+.DS_Store
+*.log
+.git/
+.env

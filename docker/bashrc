@@ -1,0 +1,54 @@
+# Bash enhancements for the bettergitgraph dev container shell
+# Sourced from /home/dev/.bashrc
+
+# ── Prompt ─────────────────────────────────────────────────────────────────────
+# Shows: [container] user@bettergitgraph-dev:/workspace (branch) $
+parse_git_branch() {
+  git branch 2>/dev/null | sed -n '/\* /s/// p' | tr -d '\n'
+}
+
+CYAN='\[\033[0;36m\]'
+GREEN='\[\033[0;32m\]'
+YELLOW='\[\033[0;33m\]'
+BOLD='\[\033[1m\]'
+RESET='\[\033[0m\]'
+
+export PS1="${CYAN}[container]${RESET} ${GREEN}\u${RESET}@${BOLD}bettergitgraph-dev${RESET}:${YELLOW}\w${RESET}\$(parse_git_branch ' (%s)')${RESET} \$ "
+
+# ── Aliases ────────────────────────────────────────────────────────────────────
+alias ll='ls -alF --color=auto'
+alias la='ls -A --color=auto'
+alias l='ls -CF --color=auto'
+alias gs='git status'
+alias gb='git branch -avv'
+alias gl='git log --oneline --graph --decorate --all | head -30'
+alias gd='git diff'
+alias gp='git push'
+alias gpl='git pull --rebase'
+
+# npm shortcuts
+alias ni='npm install'
+alias nb='npm run compile'
+alias nt='npm run test:unit'
+alias nl='npm run lint'
+alias ntc='npm run check-types'
+alias nw='npm run watch'
+
+# ── Message on shell start ─────────────────────────────────────────────────────
+echo ""
+echo "  🐳 BetterGitGraph Dev Container"
+echo "  ─────────────────────────────────────────────────────"
+echo "  Workspace : /workspace  (→ host: bettergitgraph/)"
+echo "  Node      : $(node --version)"
+echo "  npm       : $(npm --version)"
+echo "  TypeScript: $(tsc --version)"
+echo "  git       : $(git --version)"
+echo "  gh        : $(gh --version 2>&1 | head -1)"
+echo "  ─────────────────────────────────────────────────────"
+echo "  Useful commands:"
+echo "    nb   → npm run compile"
+echo "    nt   → npm run test:unit"
+echo "    nl   → npm run lint"
+echo "    ntc  → npm run check-types"
+echo "    gl   → git log (last 30, graphed)"
+echo ""

@@ -1,0 +1,91 @@
+# ─── BetterGitGraph Dev Container — Compose File ──────────────────────────────
+#
+# Usage:
+#   docker compose build          # build the image (first time or after Dockerfile change)
+#   docker compose run --rm dev   # interactive shell in /workspace
+#   docker compose run --rm dev npm run compile   # run a one-off command
+#   docker compose run --rm dev npm run test:unit  # run tests
+#
+# The host directory (bettergitgraph/) is mounted read-write at /workspace.
+# NOTHING else on the host filesystem is accessible inside the container.
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Match host UID/GID so bind-mounted files have correct ownership
+        UID: ${DOCKER_UID:-1000}
+        GID: ${DOCKER_GID:-1000}
+
+    image: bettergitgraph-dev:latest
+
+    container_name: bettergitgraph-dev
+
+    # ── Volume: project directory only ──────────────────────────────────────────
+    # The host path is the directory containing this compose file.
+    # /workspace inside the container maps to ONLY this project folder.
+    volumes:
+      - type: bind
+        source: .
+        target: /workspace
+        # No other host paths are mounted — filesystem isolation is enforced here.
+
+      # Persist npm cache between runs (speeds up npm install)
+      - npm_cache:/home/dev/.npm
+
+      # Persist git credentials if you want gh to stay authed across sessions
+      # Uncomment and populate ~/.gitconfig on the host if needed:
+      # - type: bind
+      #   source: ${HOME}/.gitconfig
+      #   target: /home/dev/.gitconfig
+      #   read_only: true
+
+    # ── Environment ─────────────────────────────────────────────────────────────
+    environment:
+      - NODE_ENV=development
+      - TERM=xterm-256color
+      - COLORTERM=truecolor
+      # Pass through GitHub token if set on host (for gh CLI inside container)
+      - GH_TOKEN=${GH_TOKEN:-}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+
+    # ── Working directory inside the container ───────────────────────────────────
+    working_dir: /workspace
+
+    # ── Interactive terminal ─────────────────────────────────────────────────────
+    stdin_open: true
+    tty: true
+
+    # ── Security: lock down what the container can do ────────────────────────────
+    # Drop ALL Linux capabilities, then add back only what's needed.
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN       # needed for npm to set file ownership
+      - SETUID      # needed for su/sudo if required
+      - SETGID
+      - DAC_OVERRIDE # needed for file reads/writes as non-root
+    security_opt:
+      - no-new-privileges:true  # prevent privilege escalation
+    read_only: false             # /workspace must be writable
+
+    # ── Resource limits ─────────────────────────────────────────────────────────
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
+        reservations:
+          memory: 512M
+
+    # ── Network: isolated, no internet access needed at runtime ─────────────────
+    # Comment out 'network_mode: none' if you need npm install / gh commands inside
+    # the container. Uncomment to fully air-gap the container after initial setup.
+    # network_mode: "none"
+
+volumes:
+  npm_cache:
+    driver: local
