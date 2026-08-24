@@ -8,7 +8,9 @@ export type CommitNodeType =
   | 'commit'   // Standard single-parent commit
   | 'merge'    // 2-parent merge commit
   | 'octopus'  // 3+ parent octopus merge
-  | 'stash';   // Stash commit
+  | 'stash'    // Stash commit
+  | 'pr'       // Pull Request / Merge Request node
+  | 'issue';   // Issue closing / referencing node
 
 export type LayoutDirection = 'TB' | 'BT' | 'LR' | 'RL';
 export type DateFormat = 'local' | 'relative' | 'iso';
@@ -34,6 +36,8 @@ export interface LayoutNode {
   y: number;
   radius: number;
   nodeType: CommitNodeType;
+  prNumber?: number;
+  issueNumber?: number;
   branchName: string;
   branchColor: string;
   isHead: boolean;
@@ -124,6 +128,50 @@ export function formatCommitDate(date: Date, format: DateFormat = 'local'): stri
   } catch {
     return formatRelativeTime(d);
   }
+}
+
+/**
+ * Classifies a commit into its visual node type (initial, merge, octopus, pr, issue, stash, commit)
+ * and extracts associated PR / Issue numbers if present.
+ */
+export function classifyCommitNode(commit: CommitNode): {
+  nodeType: CommitNodeType;
+  prNumber?: number;
+  issueNumber?: number;
+} {
+  // 1. Pull Request patterns
+  const prMatch =
+    /Merge pull request #(\d+)/i.exec(commit.subject) ??
+    /\(#(\d+)\)$/.exec(commit.subject) ??
+    /Merge PR #(\d+)/i.exec(commit.subject);
+
+  const prRefMatch = commit.refs.map((r) => /pull\/(\d+)/.exec(r)).find(Boolean);
+  const prNum = prMatch ? parseInt(prMatch[1]!, 10) : prRefMatch ? parseInt(prRefMatch[1]!, 10) : undefined;
+
+  // 2. Issue references
+  const issueMatch = /(?:Fixes|Closes|Resolves|Refs|Issue)\s*#(\d+)/i.exec(commit.subject);
+  const issueNum = issueMatch ? parseInt(issueMatch[1]!, 10) : undefined;
+
+  if (commit.subject.startsWith('WIP on ')) {
+    return { nodeType: 'stash' };
+  }
+  if (prNum !== undefined) {
+    return { nodeType: 'pr', prNumber: prNum, issueNumber: issueNum };
+  }
+  if (commit.parents.length === 0) {
+    return { nodeType: 'initial', issueNumber: issueNum };
+  }
+  if (commit.parents.length > 2) {
+    return { nodeType: 'octopus', issueNumber: issueNum };
+  }
+  if (commit.parents.length === 2) {
+    return { nodeType: 'merge', issueNumber: issueNum };
+  }
+  if (issueNum !== undefined) {
+    return { nodeType: 'issue', issueNumber: issueNum };
+  }
+
+  return { nodeType: 'commit' };
 }
 
 // ─── DAGLayoutEngine ──────────────────────────────────────────────────────────
@@ -260,16 +308,7 @@ export class DAGLayoutEngine {
       const isHead = commit.hash === headCommitHash || commit.refs.some((r) => r.includes('HEAD'));
       const isMerge = commit.parents.length > 1;
 
-      let nodeType: CommitNodeType = 'commit';
-      if (commit.parents.length === 0) {
-        nodeType = 'initial';
-      } else if (commit.parents.length === 2) {
-        nodeType = 'merge';
-      } else if (commit.parents.length > 2) {
-        nodeType = 'octopus';
-      } else if (commit.subject.startsWith('WIP on ')) {
-        nodeType = 'stash';
-      }
+      const classification = classifyCommitNode(commit);
 
       // Compute Adaptive Plaque Tag Card Geometry
       const plaqueWidth = 280;
@@ -293,7 +332,9 @@ export class DAGLayoutEngine {
         x,
         y,
         radius: isMainBranch ? opts.nodeRadius + 1 : opts.nodeRadius,
-        nodeType,
+        nodeType: classification.nodeType,
+        prNumber: classification.prNumber,
+        issueNumber: classification.issueNumber,
         branchName,
         branchColor,
         isHead,
@@ -419,16 +460,7 @@ export class DAGLayoutEngine {
       const isHead = commit.hash === headCommitHash || commit.refs.some((r) => r.includes('HEAD'));
       const isMerge = commit.parents.length > 1;
 
-      let nodeType: CommitNodeType = 'commit';
-      if (commit.parents.length === 0) {
-        nodeType = 'initial';
-      } else if (commit.parents.length === 2) {
-        nodeType = 'merge';
-      } else if (commit.parents.length > 2) {
-        nodeType = 'octopus';
-      } else if (commit.subject.startsWith('WIP on ')) {
-        nodeType = 'stash';
-      }
+      const classification = classifyCommitNode(commit);
 
       // Compute Adaptive Plaque Tag Card Geometry
       const plaqueWidth = 280;
@@ -452,7 +484,9 @@ export class DAGLayoutEngine {
         x,
         y,
         radius: isMainBranch ? opts.nodeRadius + 1 : opts.nodeRadius,
-        nodeType,
+        nodeType: classification.nodeType,
+        prNumber: classification.prNumber,
+        issueNumber: classification.issueNumber,
         branchName,
         branchColor,
         isHead,

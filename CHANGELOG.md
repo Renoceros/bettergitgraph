@@ -5,6 +5,14 @@ All notable changes to BetterGitGraph will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.6] - 2026-08-24
+
+### Added
+- **Smart Prefix Search Grammar**: Full support for `@author` (author/email), `#branch` / `branch:<name>`, `file:<path>` / `/<path>` (changed files), `msg:<text>` / `"exact phrase"`, and `is:pr`, `is:issue`, `is:merge`, `is:initial`, plus compound multi-token queries.
+- **First-Class PR Nodes (Hexagon ⬡)**: Pull Request merges are rendered as distinct purple rounded hexagons (`#8957e5`) with `PR #<number>` plaque badges.
+- **First-Class Issue Nodes (Shield ⛉)**: Commits closing or referencing issues are rendered as emerald rounded shields (`#238636`) with `ISSUE #<number>` plaque badges.
+- **Search Documentation**: Added complete search syntax cheat sheet and node geometry table to `README.md`.
+
 ## [1.2.5] - 2026-08-24
 
 ### Fixed

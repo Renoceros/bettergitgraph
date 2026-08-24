@@ -4,6 +4,7 @@ import type { GraphLayout, LayoutDirection, DateFormat } from '../components/Gra
 import { DAGLayoutEngine } from '../components/GraphCanvas/dag-layout';
 import { BranchColorEngine } from '../../extension/color-engine';
 import { messageBus } from './message-bus';
+import { parseSearchQuery } from '../utils/search-parser';
 
 // ─── App State Types ───────────────────────────────────────────────────────────
 
@@ -168,61 +169,147 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setSearchQuery: (query) => {
-    const trimmed = query.trim().toLowerCase();
+    const trimmed = query.trim();
     if (!trimmed) {
       set({ searchQuery: '', filteredHashes: null });
       return;
     }
 
+    const parsed = parseSearchQuery(trimmed);
     const { commits, branches, layout } = get();
     const matches = new Set<string>();
 
-    // 1. Find any branches whose name matches query
-    const matchingBranchNames = new Set<string>();
-    for (const b of branches) {
-      if (b.name.toLowerCase().includes(trimmed)) {
-        matchingBranchNames.add(b.name.toLowerCase());
+    if (parsed.isPrefixSearch) {
+      // ── Scoped Prefix Search Mode (@author, #branch, file:, msg:, is:) ───
+      const matchingBranchNames = new Set<string>();
+      for (const b of branches) {
+        const bName = b.name.toLowerCase();
+        if (parsed.branches.some((target) => bName.includes(target))) {
+          matchingBranchNames.add(bName);
+        }
       }
-    }
 
-    // 2. Direct matches against commit metadata + cached changed files
-    for (const c of commits) {
-      const layoutNode = layout?.nodeMap.get(c.hash);
-      const nodeBranch = layoutNode?.branchName?.toLowerCase() || '';
+      for (const c of commits) {
+        const layoutNode = layout?.nodeMap.get(c.hash);
+        const nodeBranch = layoutNode?.branchName?.toLowerCase() || '';
 
-      const matchesBranch =
-        (nodeBranch && nodeBranch.includes(trimmed)) ||
-        matchingBranchNames.has(nodeBranch);
+        // Author filter (@renoce)
+        const matchAuthor =
+          parsed.authors.length === 0 ||
+          parsed.authors.some(
+            (a) =>
+              c.author.toLowerCase().includes(a) ||
+              c.authorEmail.toLowerCase().includes(a)
+          );
 
-      const cachedFiles = commitFilesCache.get(c.hash);
-      const matchesCachedFile = cachedFiles?.some((f) =>
-        f.path.toLowerCase().includes(trimmed)
-      );
+        // Branch filter (#feature, branch:404)
+        const matchBranch =
+          parsed.branches.length === 0 ||
+          matchingBranchNames.has(nodeBranch) ||
+          parsed.branches.some(
+            (b) =>
+              nodeBranch.includes(b) ||
+              c.refs.some((r) => r.toLowerCase().includes(b))
+          );
 
-      const matchesDirect =
-        c.subject.toLowerCase().includes(trimmed) ||
-        c.author.toLowerCase().includes(trimmed) ||
-        c.authorEmail.toLowerCase().includes(trimmed) ||
-        c.shortHash.toLowerCase().includes(trimmed) ||
-        c.hash.toLowerCase().includes(trimmed) ||
-        c.refs.some((r) => r.toLowerCase().includes(trimmed));
+        // Message filter (msg:fix, "exact phrase")
+        const matchMsg =
+          parsed.messages.length === 0 ||
+          parsed.messages.some((m) => c.subject.toLowerCase().includes(m));
 
-      if (matchesDirect || matchesBranch || matchesCachedFile) {
-        matches.add(c.hash);
+        // Node Type filter (is:pr, is:issue, is:merge, is:initial)
+        const matchType =
+          parsed.types.length === 0 ||
+          (layoutNode && parsed.types.includes(layoutNode.nodeType as any));
+
+        // Cached file match (file:auth)
+        const cachedFiles = commitFilesCache.get(c.hash);
+        const matchCachedFile =
+          parsed.files.length === 0 ||
+          (cachedFiles &&
+            parsed.files.some((f) =>
+              cachedFiles.some((cf) => cf.path.toLowerCase().includes(f))
+            ));
+
+        // General terms within prefix search
+        const matchRawTerms =
+          parsed.rawTerms.length === 0 ||
+          parsed.rawTerms.every(
+            (term) =>
+              c.subject.toLowerCase().includes(term) ||
+              c.author.toLowerCase().includes(term) ||
+              c.shortHash.toLowerCase().includes(term) ||
+              nodeBranch.includes(term)
+          );
+
+        if (
+          matchAuthor &&
+          matchBranch &&
+          matchMsg &&
+          matchType &&
+          matchCachedFile &&
+          matchRawTerms
+        ) {
+          matches.add(c.hash);
+        }
+      }
+
+      // If file search criteria are present, dispatch backend file search
+      if (parsed.files.length > 0) {
+        if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(() => {
+          for (const fileToken of parsed.files) {
+            messageBus.send({ type: 'SEARCH_CHANGED_FILES', payload: { query: fileToken } });
+          }
+        }, 250);
+      }
+    } else {
+      // ── Universal Fuzzy Search Mode ───
+      const lower = trimmed.toLowerCase();
+
+      const matchingBranchNames = new Set<string>();
+      for (const b of branches) {
+        if (b.name.toLowerCase().includes(lower)) {
+          matchingBranchNames.add(b.name.toLowerCase());
+        }
+      }
+
+      for (const c of commits) {
+        const layoutNode = layout?.nodeMap.get(c.hash);
+        const nodeBranch = layoutNode?.branchName?.toLowerCase() || '';
+
+        const matchesBranch =
+          (nodeBranch && nodeBranch.includes(lower)) ||
+          matchingBranchNames.has(nodeBranch);
+
+        const cachedFiles = commitFilesCache.get(c.hash);
+        const matchesCachedFile = cachedFiles?.some((f) =>
+          f.path.toLowerCase().includes(lower)
+        );
+
+        const matchesDirect =
+          c.subject.toLowerCase().includes(lower) ||
+          c.author.toLowerCase().includes(lower) ||
+          c.authorEmail.toLowerCase().includes(lower) ||
+          c.shortHash.toLowerCase().includes(lower) ||
+          c.hash.toLowerCase().includes(lower) ||
+          c.refs.some((r) => r.toLowerCase().includes(lower));
+
+        if (matchesDirect || matchesBranch || matchesCachedFile) {
+          matches.add(c.hash);
+        }
+      }
+
+      // Dispatch debounced file search
+      if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+      if (lower.length >= 2) {
+        searchDebounceTimer = setTimeout(() => {
+          messageBus.send({ type: 'SEARCH_CHANGED_FILES', payload: { query: lower } });
+        }, 250);
       }
     }
 
     set({ searchQuery: query, filteredHashes: matches });
-
-    // 3. Dispatch debounced search for changed files in Git history
-    if (searchDebounceTimer) {
-      clearTimeout(searchDebounceTimer);
-    }
-    if (trimmed.length >= 2) {
-      searchDebounceTimer = setTimeout(() => {
-        messageBus.send({ type: 'SEARCH_CHANGED_FILES', payload: { query: trimmed } });
-      }, 250);
-    }
   },
 
   addFileSearchMatches: (query, hashes) => {

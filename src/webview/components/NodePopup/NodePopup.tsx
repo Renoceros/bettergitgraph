@@ -92,12 +92,42 @@ export const NodePopup: React.FC<NodePopupProps> = ({
               borderRadius: 4,
               fontSize: 11,
               fontWeight: 'bold',
-              backgroundColor: node.isMainBranch ? 'rgba(78,201,176,0.2)' : 'rgba(86,156,214,0.2)',
-              color: node.isMainBranch ? '#4ec9b0' : '#569cd6',
-              border: `1px solid ${node.isMainBranch ? '#4ec9b0' : '#569cd6'}`,
+              backgroundColor:
+                node.nodeType === 'pr'
+                  ? 'rgba(137, 87, 229, 0.25)'
+                  : node.nodeType === 'issue'
+                  ? 'rgba(35, 134, 54, 0.25)'
+                  : node.isMainBranch
+                  ? 'rgba(78,201,176,0.2)'
+                  : 'rgba(86,156,214,0.2)',
+              color:
+                node.nodeType === 'pr'
+                  ? '#d8b4fe'
+                  : node.nodeType === 'issue'
+                  ? '#4ade80'
+                  : node.isMainBranch
+                  ? '#34d399'
+                  : '#60a5fa',
+              border: `1px solid ${
+                node.nodeType === 'pr'
+                  ? '#8957e5'
+                  : node.nodeType === 'issue'
+                  ? '#238636'
+                  : node.isMainBranch
+                  ? '#4ec9b0'
+                  : '#569cd6'
+              }`,
             }}
           >
-            {node.nodeType.toUpperCase()}
+            {node.nodeType === 'pr'
+              ? node.prNumber
+                ? `PR #${node.prNumber}`
+                : 'PULL REQUEST'
+              : node.nodeType === 'issue'
+              ? node.issueNumber
+                ? `ISSUE #${node.issueNumber}`
+                : 'ISSUE'
+              : node.nodeType.toUpperCase()}
           </span>
           <span style={{ fontWeight: 600 }}>{node.branchName}</span>
         </div>

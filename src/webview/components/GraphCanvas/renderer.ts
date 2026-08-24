@@ -240,7 +240,7 @@ export class CanvasRenderer {
       ctx.stroke();
 
       // 3. Draw Type Badge Pill
-      const typeLabel = this.getNodeTypeBadgeLabel(node.nodeType);
+      const typeLabel = this.getNodeTypeBadgeLabel(node.nodeType, node);
       const typeBgColor = this.getNodeTypeBadgeBg(node.nodeType, isDark);
       const typeTextColor = this.getNodeTypeBadgeTextColor(node.nodeType, isDark);
 
@@ -338,6 +338,22 @@ export class CanvasRenderer {
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 2;
         ctx.stroke();
+      } else if (node.nodeType === 'pr') {
+        // PR Node: Purple Hexagon
+        this.drawHexagon(ctx, node.x, node.y, radius + 2);
+        ctx.fillStyle = '#8957e5';
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else if (node.nodeType === 'issue') {
+        // Issue Node: Emerald Shield / Rounded Square
+        this.drawShield(ctx, node.x, node.y, radius + 1);
+        ctx.fillStyle = '#238636';
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
       } else {
         ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
         ctx.fillStyle = node.branchColor;
@@ -362,6 +378,24 @@ export class CanvasRenderer {
     }
   }
 
+  private drawHexagon(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const angle = (i * Math.PI) / 3 - Math.PI / 6;
+      const x = cx + r * Math.cos(angle);
+      const y = cy + r * Math.sin(angle);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+  }
+
+  private drawShield(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
+    ctx.beginPath();
+    ctx.roundRect(cx - r, cy - r, r * 2, r * 2, 4);
+    ctx.closePath();
+  }
+
   private truncateTextToWidth(text: string, maxWidth: number, ctx: CanvasRenderingContext2D): string {
     if (ctx.measureText(text).width <= maxWidth) return text;
     let low = 0;
@@ -380,7 +414,7 @@ export class CanvasRenderer {
     return best;
   }
 
-  private getNodeTypeBadgeLabel(type: CommitNodeType): string {
+  private getNodeTypeBadgeLabel(type: CommitNodeType, node?: LayoutNode): string {
     switch (type) {
       case 'initial':
         return 'INITIAL';
@@ -388,6 +422,10 @@ export class CanvasRenderer {
         return 'MERGE';
       case 'octopus':
         return 'OCTOPUS';
+      case 'pr':
+        return node?.prNumber ? `PR #${node.prNumber}` : 'PR';
+      case 'issue':
+        return node?.issueNumber ? `ISSUE #${node.issueNumber}` : 'ISSUE';
       case 'stash':
         return 'STASH';
       default:
@@ -402,6 +440,10 @@ export class CanvasRenderer {
       case 'merge':
       case 'octopus':
         return isDark ? '#3b2064' : '#ede9fe';
+      case 'pr':
+        return isDark ? '#4c2889' : '#f0e6ff';
+      case 'issue':
+        return isDark ? '#1a4b29' : '#dcfce7';
       case 'stash':
         return isDark ? '#374151' : '#f3f4f6';
       default:
@@ -416,6 +458,10 @@ export class CanvasRenderer {
       case 'merge':
       case 'octopus':
         return isDark ? '#a78bfa' : '#5b21b6';
+      case 'pr':
+        return isDark ? '#d8b4fe' : '#7c3aed';
+      case 'issue':
+        return isDark ? '#4ade80' : '#15803d';
       case 'stash':
         return isDark ? '#9ca3af' : '#4b5563';
       default:

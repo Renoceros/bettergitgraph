@@ -119,9 +119,24 @@ export function exportGraphToSvg(
     svg += `      <rect x="${plaque.x}" y="${plaque.y}" width="${plaque.width}" height="${plaque.height}" rx="6" fill="${plaqueBg}" stroke="${plaqueBorder}" stroke-width="1.2" />\n`;
 
     // Badge
-    const badgeText = node.nodeType.toUpperCase();
-    const badgeBg = node.isMainBranch ? '#144234' : (isDark ? '#1e3a5f' : '#dbeafe');
-    const badgeFg = node.isMainBranch ? '#34d399' : (isDark ? '#60a5fa' : '#1e40af');
+    let badgeText = node.nodeType.toUpperCase();
+    if (node.nodeType === 'pr') {
+      badgeText = node.prNumber ? `PR #${node.prNumber}` : 'PR';
+    } else if (node.nodeType === 'issue') {
+      badgeText = node.issueNumber ? `ISSUE #${node.issueNumber}` : 'ISSUE';
+    }
+
+    let badgeBg = node.isMainBranch ? '#144234' : (isDark ? '#1e3a5f' : '#dbeafe');
+    let badgeFg = node.isMainBranch ? '#34d399' : (isDark ? '#60a5fa' : '#1e40af');
+
+    if (node.nodeType === 'pr') {
+      badgeBg = isDark ? '#4c2889' : '#f0e6ff';
+      badgeFg = isDark ? '#d8b4fe' : '#7c3aed';
+    } else if (node.nodeType === 'issue') {
+      badgeBg = isDark ? '#1a4b29' : '#dcfce7';
+      badgeFg = isDark ? '#4ade80' : '#15803d';
+    }
+
     const badgeWidth = badgeText.length * 6 + 16;
 
     svg += `      <rect x="${plaque.x + 8}" y="${plaque.y + 6}" width="${badgeWidth}" height="16" rx="3" fill="${badgeBg}" />\n`;
@@ -157,6 +172,18 @@ export function exportGraphToSvg(
       svg += `    <circle cx="${node.x}" cy="${node.y}" r="${radius - 2}" fill="${bgColor}" />\n`;
     } else if (node.nodeType === 'initial') {
       svg += `    <circle cx="${node.x}" cy="${node.y}" r="${radius + 1}" fill="#4ec9b0" stroke="#ffffff" stroke-width="2" />\n`;
+    } else if (node.nodeType === 'pr') {
+      // Hexagon path
+      const points: string[] = [];
+      for (let i = 0; i < 6; i++) {
+        const angle = (i * Math.PI) / 3 - Math.PI / 6;
+        const hx = node.x + (radius + 2) * Math.cos(angle);
+        const hy = node.y + (radius + 2) * Math.sin(angle);
+        points.push(`${hx},${hy}`);
+      }
+      svg += `    <polygon points="${points.join(' ')}" fill="#8957e5" stroke="#ffffff" stroke-width="2" />\n`;
+    } else if (node.nodeType === 'issue') {
+      svg += `    <rect x="${node.x - radius - 1}" y="${node.y - radius - 1}" width="${(radius + 1) * 2}" height="${(radius + 1) * 2}" rx="4" fill="#238636" stroke="#ffffff" stroke-width="2" />\n`;
     } else {
       svg += `    <circle cx="${node.x}" cy="${node.y}" r="${radius}" fill="${node.branchColor}" stroke="${node.isMainBranch ? '#ffffff' : (isDark ? '#2d2d2d' : '#e0e0e0')}" stroke-width="${node.isMainBranch ? 2 : 1.5}" />\n`;
     }

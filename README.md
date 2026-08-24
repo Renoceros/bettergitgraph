@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Renoceros/bettergitgraph/releases/latest"><img src="https://img.shields.io/badge/Release-v1.2.3-blue.svg" alt="Release Version" /></a>
+  <a href="https://github.com/Renoceros/bettergitgraph/releases/latest"><img src="https://img.shields.io/badge/Release-v1.2.6-blue.svg" alt="Release Version" /></a>
   <a href="https://marketplace.visualstudio.com/items?itemName=Renoceros.bettergitgraph"><img src="https://img.shields.io/badge/VS%20Code-%5E1.90.0-007ACC.svg?logo=visualstudiocode" alt="VS Code Version" /></a>
   <a href="https://github.com/Renoceros/bettergitgraph/actions"><img src="https://img.shields.io/badge/CI-Passing-brightgreen.svg" alt="CI Status" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" /></a>
@@ -32,43 +32,61 @@ Most Git graph extensions render commit history as rigid, tabular text logs with
 
 ## ✨ Key Features
 
-### 1. ⏱️ Dual Visualization Engines
-Switch seamlessly between two purpose-built visualization paradigms:
+### 1. ⏱️ Dual Visualization Engines & 4-Direction Matrix
+Switch seamlessly between two purpose-built visualization paradigms across 4 flow orientations (`↓ TB`, `↑ BT`, `→ LR`, `← RL`):
 - **Timeline View (Default):** Commits are ordered strictly chronologically descending (newest at the top, oldest at the bottom). Ideal for understanding the exact sequence of real-time developments across all branches.
 - **Tree View (Topological DAG):** Commits are structured topologically based on parent-child ancestry relationships using Sugiyama layout algorithms. Ideal for inspecting complex feature branches, merges, and octopus merges.
 
 ### 2. 🌲 The Trunk & Vine Visual Hierarchy
 - **The Central Trunk:** `main` (or `master`) is visually anchored as the repository's continuous central spine with a prominent, thicker stroke ($5.0\text{px}$).
-- **Feature Vines:** Feature and bugfix branches fork outward into parallel lanes ($2.5\text{px}$) and curve gracefully back into the trunk when merged ("vines reattaching to the tree").
+- **Feature Vines:** Feature and bugfix branches fork outward into parallel lanes ($2.5\text{px}$) and curve gracefully back into the trunk when merged.
 
-### 3. 🎨 Deterministic & Persistent Color Engine
+### 3. 🏷️ Orientation-Aware Plaques (No Label Clashing)
+- Each commit's details are housed inside an encapsulated, sleek tag card with a connector notch.
+- In vertical modes (`TB`/`BT`), plaques are placed to the **Right**. In horizontal modes (`LR`/`RL`), plaques are placed **Above or Below** nodes, alternating vertically so horizontal timeline lanes have **zero horizontal label collisions**!
+
+### 4. ⬡ First-Class PR & Issue Nodes (Geometric Differentiation)
+Adhering to data visualization best practices, node types are clearly differentiated by geometry and accent colors:
+
+| Node Type | Geometric Shape | Accent Color | Visual Glyphs | Plaque Badge |
+|---|---|---|---|---|
+| **Standard Commit** | Solid Circle $\bigcirc$ ($R=8\text{px}$) | Branch Color | Solid single stroke ($1.5\text{px}$) | `COMMIT` (Blue) |
+| **Root Commit** | Solid Circle with White Core | `#4ec9b0` | Double solid stroke ($2\text{px}$) | `INITIAL` (Emerald) |
+| **Merge Commit** | Concentric Double Ring $\odot$ | Branch Color | Outer circle + inner ring | `MERGE` / `OCTOPUS` (Purple) |
+| **Pull Request (PR)** | **Rounded Hexagon** $\varhexagon$ ($R=11\text{px}$) | `#8957e5` (Purple) | Hexagonal polygon path | `PR #123` (Purple Pill) |
+| **Issue Node** | **Rounded Shield / Square** $\square$ ($R=10\text{px}$) | `#238636` (Green) | Rounded square card | `ISSUE #45` (Green Pill) |
+
+### 5. 🎨 Deterministic & Persistent Color Engine
 - Branch colors are generated deterministically using **32-bit FNV-1a hashing** mapped to an accessible color palette.
 - **Zero Session Drift:** The same branch name will always produce the exact same color, regardless of when it was created, how many other branches exist, or which computer you are using.
 
-### 4. 🏷️ Human-Centric Node Labels
-- **No SHA Clutter:** Commits prominently display clean typographic badges (`INITIAL`, `MERGE`, `OCTOPUS`, `COMMIT`), bold commit subjects, author names, and human-friendly relative timestamps (e.g., `2h ago`, `yesterday`).
-- Full SHAs are available on-demand with one-click copy inside the details popover.
-
-### 5. 🪟 Interactive Floating Node Popup
+### 6. 🪟 Interactive Floating Node Popup
 Click any commit node to display a floating details card:
-- **Metadata:** Author, email, timestamp, and branch association.
+- **Metadata:** Author, email, local/relative timestamp, and branch association.
 - **Parent Navigation:** Clickable parent commit chips that instantly pan and center the viewport on parent commits.
-- **Changed Files List:** Status badges (`A` Added, `M` Modified, `D` Deleted, `R` Renamed) with click-to-open diffs in VS Code.
+- **Changed Files List & Live Filter:** Filter changed files with an in-card search input; click any file to open VS Code's diff editor.
 - **Quick Action Bar:** One-click Checkout, Branch creation, Revert, and Hard Reset.
 
-### 6. 🛡️ Safe Git Operations & Audit Trail
-- **Right-Click Context Menu:** Perform standard and advanced Git operations without touching the terminal.
-- **Destructive Action Guardrails:** High-risk actions (such as `git reset --hard` or `git branch -D`) require explicit confirmation in a modal dialog with command previews and default-focused Cancel safety guards.
-- **Local Audit Log:** Every UI-triggered Git action is recorded locally in `.git/bettergitgraph-op-log.json` for auditing and rollback peace of mind.
+### 7. 🖼️ Standalone Repo Map Export (SVG & PNG)
+- Right-click anywhere on the empty canvas background to export your entire repository history as a high-resolution standalone vector `.svg` or `.png` diagram.
+- SVG exports feature embedded CSS styling, `<clipPath>` containment, and precise font-metric truncation for presentation in browsers, reports, Figma, or documentation.
 
-### 7. 🌲 Recursive Remote Branch Explorer
-- Built into the VS Code Source Control sidebar.
-- Deep remote branches (e.g., `origin/feature/user/authentication`) are rendered as an **intuitive nested folder tree** rather than a flat, overwhelming list.
-- Includes real-time **ahead/behind commit counters** relative to upstream.
+---
 
-### 8. 🔍 Instant Search & Multi-Filter
-- Instant live search by commit subject, author, email, branch ref, or hash.
-- Matches are highlighted with glowing indicator rings while non-matching commits are gently dimmed.
+## 🔍 Smart Search Syntax & Power Filtering
+
+The search bar supports precision scoping prefixes and multi-attribute queries:
+
+| Syntax / Prefix | Target Scope | Example | Description |
+|---|---|---|---|
+| `@<name>` / `author:<name>` | Author Name & Email | `@renoce` | Highlights only commits authored by users matching `renoce` |
+| `#<branch>` / `branch:<name>` | Branch & Ref Lineage | `#feature/login`, `branch:404` | Highlights all commits belonging to matching branch names |
+| `file:<path>` / `/<path>` | Changed Files & Paths | `file:dag-layout.ts`, `/components` | Highlights commits that modified, added, or deleted matching files |
+| `msg:<text>` / `"phrase"` | Commit Message / Title | `msg:merge`, `"fix token bug"` | Highlights commits matching exact message terms |
+| `is:<type>` / `type:<type>` | Node Type Filter | `is:pr`, `is:issue`, `is:merge`, `is:initial` | Highlights specific node geometries |
+| *(no prefix)* | Universal Fuzzy Search | `refactor` | Searches across subject, author, branch, file, and SHA |
+
+> **Compound Queries:** You can combine multiple search tokens together (e.g. `@renoce is:pr file:dag-layout #main`) to filter complex repository histories instantly.
 
 ---
 
@@ -104,7 +122,8 @@ Configure BetterGitGraph via VS Code Settings (`Cmd+,` / `Ctrl+,` $\rightarrow$ 
 
 | Setting | Type | Default | Description |
 |---|---|---|---|
-| `bettergitgraph.layoutDirection` | `string` (`"TB" \| "LR"`) | `"TB"` | Graph flow direction: Top-to-Bottom or Left-to-Right. |
+| `bettergitgraph.layoutDirection` | `string` (`"TB" \| "BT" \| "LR" \| "RL"`) | `"TB"` | Graph flow direction: Top-to-Bottom, Bottom-to-Top, Left-to-Right, or Right-to-Left. |
+| `bettergitgraph.dateFormat` | `string` (`"local" \| "relative" \| "iso"`) | `"local"` | Format for commit timestamps: Local Time (`19:45 GMT+8`), Relative (`2h ago`), or ISO. |
 | `bettergitgraph.beginnerMode` | `boolean` | `true` | Show plain-English explanations and confirmation dialogs. |
 | `bettergitgraph.maxCommits` | `number` | `2000` | Maximum number of commits loaded into the graph. |
 | `bettergitgraph.nodeSize` | `number` | `12` | Radius of commit nodes in pixels. |
@@ -136,43 +155,9 @@ BetterGitGraph is built strictly as a **local-first** developer tool:
 1. Download the latest `bettergitgraph-x.x.x.vsix` from [GitHub Releases](https://github.com/Renoceros/bettergitgraph/releases).
 2. Install via terminal:
    ```bash
-   code --install-extension bettergitgraph-1.2.3.vsix
+   code --install-extension bettergitgraph-1.2.6.vsix
    ```
    *(Or in VS Code: Extensions View $\rightarrow$ `...` menu $\rightarrow$ **Install from VSIX...**)*
-
----
-
-## 🧑‍💻 Development & Contributing
-
-### Requirements
-- Node.js $\ge 20.0.0$
-- npm $\ge 10.0.0$
-- VS Code $\ge 1.90.0$
-
-### Setup & Build
-```bash
-# 1. Clone the repository
-git clone https://github.com/Renoceros/bettergitgraph.git
-cd bettergitgraph
-
-# 2. Install dependencies
-npm install
-
-# 3. Run unit test suite (Vitest)
-npm run test:unit
-
-# 4. Compile extension host (esbuild) & webview (Vite + React 19)
-npm run compile
-
-# 5. Launch debug host
-# Open repository in VS Code and press F5
-```
-
-### Architecture
-- **Extension Host (`src/extension/`):** Node.js CommonJS process bundled with `esbuild`. Handles Git CLI execution (`simple-git`), branch tree data provider, and message dispatch.
-- **Webview UI (`src/webview/`):** React 19 application bundled with `Vite`. Uses HTML5 Canvas for high-DPI rendering, Zustand for reactive state management, and `@dagrejs/dagre` for graph positioning.
-
-For detailed technical specifications, see [`documentation/TECH_DOCS.md`](documentation/TECH_DOCS.md) and [`documentation/PRD.md`](documentation/PRD.md).
 
 ---
 
