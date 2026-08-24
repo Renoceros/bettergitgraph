@@ -62,10 +62,10 @@ main
 | M4 | Branch Explorer Polish | ✅ Done | `feat/m4/*` | M3 |
 | M5 | Git Operations | ✅ Done | `feat/m5/*` | M3 |
 | M6 | Beginner Mode | ✅ Done | `feat/m6/*` | M5 |
-| M7 | Search & Filter | 🔄 In Progress | `feat/m7/*` | M3 |
-| M8 | Diff View | 🔄 In Progress | `feat/m8/*` | M3 |
-| M9 | Polish & QA | ⏳ Queued | `feat/m9/*` | M4–M8 |
-| M10 | Release | ⏳ Queued | `release/v1.0.0` | M9 |
+| M7 | Search & Filter | ✅ Done | `feat/m7/*` | M3 |
+| M8 | Diff View | ✅ Done | `feat/m8/*` | M3 |
+| M9 | Polish & QA | ✅ Done | `feat/m9/*` | M4–M8 |
+| M10 | Release (v1.0.0) | ✅ Done | `release/v1.0.0` | M9 |
 
 ---
 

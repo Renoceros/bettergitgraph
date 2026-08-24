@@ -1,12 +1,12 @@
 # BetterGitGraph Agent Context
 
 ## Last Updated
-2026-08-24 — Sprints 1, 2, 3 implementation completed (M1, M2, M3, M4, M5, M6)
+2026-08-24 — v1.0.0 Complete (all milestones M0–M10 verified & packaged)
 
 ## Current State
-- **Branch:** main
-- **Last Milestone Completed:** M3 — Webview Shell & Canvas Renderer ✅, M5 — Git Operations ✅, M6 — Beginner Mode ✅
-- **Next Milestone:** M7 — Search & Filter (polish), M8 — Diff View (polish), M9 — QA & Benchmarks
+- **Branch:** main / tag: v1.0.0
+- **Last Milestone Completed:** M10 — Release v1.0.0 (.vsix packaged) ✅
+- **Next Milestone:** v1.1.0 Roadmap (Multi-root workspace + Interactive rebase)
 
 ## What's Working
 - [x] M0 — Full project scaffold committed and pushed to GitHub
