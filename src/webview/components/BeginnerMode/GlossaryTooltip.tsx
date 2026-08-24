@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { GIT_GLOSSARY } from '../../data/glossary';
+import { IconInfo } from '../Icons/Icons';
 
 interface GlossaryTooltipProps {
   termKey: keyof typeof GIT_GLOSSARY;
@@ -46,8 +47,9 @@ export const GlossaryTooltip: React.FC<GlossaryTooltipProps> = ({ termKey, child
             pointerEvents: 'none',
           }}
         >
-          <div style={{ fontWeight: 'bold', color: '#4ec9b0', marginBottom: 4 }}>
-            💡 {info.title}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 'bold', color: '#4ec9b0', marginBottom: 4 }}>
+            <IconInfo size={13} color="#4ec9b0" />
+            <span>{info.title}</span>
           </div>
           <div style={{ marginBottom: 6, lineHeight: 1.4 }}>{info.definition}</div>
           <div style={{ opacity: 0.8, fontStyle: 'italic', color: '#ffd43b' }}>

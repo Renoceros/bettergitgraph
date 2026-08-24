@@ -329,15 +329,15 @@ export class CanvasRenderer {
   private getNodeTypeBadgeLabel(type: CommitNodeType): string {
     switch (type) {
       case 'initial':
-        return '🌱 Initial';
+        return 'INITIAL';
       case 'merge':
-        return '🔀 Merge';
+        return 'MERGE';
       case 'octopus':
-        return '🐙 Octopus Merge';
+        return 'OCTOPUS';
       case 'stash':
-        return '📦 Stash';
+        return 'STASH';
       default:
-        return 'Commit';
+        return 'COMMIT';
     }
   }
 

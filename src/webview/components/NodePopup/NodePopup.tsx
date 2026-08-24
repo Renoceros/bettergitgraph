@@ -3,7 +3,14 @@ import type { LayoutNode } from '../GraphCanvas/dag-layout';
 import type { ChangedFile } from '../../../extension/git-data';
 import type { GitOperation } from '../../../extension/operation-executor';
 import { FileList } from '../CommitDetail/FileList';
-import { messageBus } from '../../store/message-bus';
+import {
+  IconCheckout,
+  IconBranch,
+  IconRevert,
+  IconReset,
+  IconCopy,
+  IconCheck,
+} from '../Icons/Icons';
 
 export interface NodePopupProps {
   node: LayoutNode;
@@ -39,7 +46,6 @@ export const NodePopup: React.FC<NodePopupProps> = ({
     timeStyle: 'short',
   });
 
-  // Calculate safe positioning on screen
   const popupWidth = 360;
   const popupHeight = 440;
   const left = Math.min(Math.max(20, screenX + 20), window.innerWidth - popupWidth - 20);
@@ -144,14 +150,27 @@ export const NodePopup: React.FC<NodePopupProps> = ({
                 background: 'none',
                 border: '1px solid #555',
                 borderRadius: 4,
-                padding: '1px 6px',
-                fontSize: 10,
+                padding: '2px 8px',
+                fontSize: 11,
                 fontFamily: 'monospace',
                 color: 'var(--vscode-foreground)',
                 cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
               }}
             >
-              {copied ? '✓ Copied' : node.shortHash}
+              {copied ? (
+                <>
+                  <IconCheck size={11} color="#4ec9b0" />
+                  <span>Copied</span>
+                </>
+              ) : (
+                <>
+                  <IconCopy size={11} />
+                  <span>{node.shortHash}</span>
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -207,7 +226,8 @@ export const NodePopup: React.FC<NodePopupProps> = ({
             onClick={() => onExecuteOperation({ op: 'CHECKOUT', hash: node.hash })}
             style={actionBtnStyle}
           >
-            🚀 Checkout
+            <IconCheckout size={12} color="#4ec9b0" />
+            <span>Checkout</span>
           </button>
           <button
             onClick={() => {
@@ -218,19 +238,22 @@ export const NodePopup: React.FC<NodePopupProps> = ({
             }}
             style={actionBtnStyle}
           >
-            🌿 Branch
+            <IconBranch size={12} color="#569cd6" />
+            <span>Branch</span>
           </button>
           <button
             onClick={() => onExecuteOperation({ op: 'REVERT', hash: node.hash }, true)}
             style={actionBtnStyle}
           >
-            ⏪ Revert
+            <IconRevert size={12} color="#dcdcaa" />
+            <span>Revert</span>
           </button>
           <button
             onClick={() => onExecuteOperation({ op: 'RESET', mode: 'hard', hash: node.hash }, true)}
             style={{ ...actionBtnStyle, color: '#f14c4c', borderColor: '#f14c4c' }}
           >
-            🚨 Reset Hard
+            <IconReset size={12} color="#f14c4c" />
+            <span>Reset Hard</span>
           </button>
         </div>
       </div>
@@ -243,8 +266,11 @@ const actionBtnStyle: React.CSSProperties = {
   color: 'var(--vscode-button-secondaryForeground, #ffffff)',
   border: '1px solid var(--vscode-button-secondaryBorder, #454545)',
   borderRadius: 4,
-  padding: '4px 8px',
+  padding: '4px 10px',
   cursor: 'pointer',
   fontSize: 11,
   fontWeight: 500,
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
 };

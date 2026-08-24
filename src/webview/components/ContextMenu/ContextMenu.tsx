@@ -1,6 +1,16 @@
 import React, { useEffect, useRef } from 'react';
 import type { LayoutNode } from '../GraphCanvas/dag-layout';
 import type { GitOperation } from '../../../extension/operation-executor';
+import {
+  IconCheckout,
+  IconBranch,
+  IconRevert,
+  IconCherryPick,
+  IconTag,
+  IconReset,
+  IconDanger,
+  IconCopy,
+} from '../Icons/Icons';
 
 export interface ContextMenuProps {
   x: number;
@@ -58,7 +68,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     }
   };
 
-  // Adjust menu position if close to screen edge
   const adjustedX = Math.min(x, window.innerWidth - 280);
   const adjustedY = Math.min(y, window.innerHeight - 380);
 
@@ -96,7 +105,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       </div>
 
       <MenuItem
-        icon="🚀"
+        icon={<IconCheckout size={14} color="#4ec9b0" />}
         title="Checkout this commit"
         beginnerSubtitle="Go to this point in time"
         gitCommand={`git checkout ${node.shortHash}`}
@@ -105,7 +114,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       />
 
       <MenuItem
-        icon="🌿"
+        icon={<IconBranch size={14} color="#569cd6" />}
         title="Create branch here…"
         beginnerSubtitle="Start a new branch from here"
         gitCommand={`git branch <name> ${node.shortHash}`}
@@ -114,7 +123,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       />
 
       <MenuItem
-        icon="⏪"
+        icon={<IconRevert size={14} color="#dcdcaa" />}
         title="Revert this commit"
         beginnerSubtitle="Create a commit that undoes this change"
         gitCommand={`git revert ${node.shortHash}`}
@@ -123,7 +132,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       />
 
       <MenuItem
-        icon="🍒"
+        icon={<IconCherryPick size={14} color="#ce9178" />}
         title="Cherry-pick this commit"
         beginnerSubtitle="Copy this commit to current branch"
         gitCommand={`git cherry-pick ${node.shortHash}`}
@@ -132,7 +141,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       />
 
       <MenuItem
-        icon="🏷️"
+        icon={<IconTag size={14} color="#e5a50a" />}
         title="Tag this commit…"
         beginnerSubtitle="Add a permanent name bookmark"
         gitCommand={`git tag <name> ${node.shortHash}`}
@@ -143,7 +152,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       <div style={{ height: 1, backgroundColor: 'var(--vscode-menu-separatorBackground, #3c3c3c)', margin: '4px 0' }} />
 
       <MenuItem
-        icon="⚠️"
+        icon={<IconReset size={14} color="#e5a50a" />}
         title="Reset branch to here (Soft)"
         beginnerSubtitle="Move branch pointer, keep changes staged"
         gitCommand={`git reset --soft ${node.shortHash}`}
@@ -152,7 +161,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       />
 
       <MenuItem
-        icon="⚠️"
+        icon={<IconReset size={14} color="#e5a50a" />}
         title="Reset branch to here (Mixed)"
         beginnerSubtitle="Move pointer, keep changes unstaged"
         gitCommand={`git reset --mixed ${node.shortHash}`}
@@ -161,7 +170,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       />
 
       <MenuItem
-        icon="🚨"
+        icon={<IconDanger size={14} color="#f14c4c" />}
         title="Reset branch to here (Hard)"
         beginnerSubtitle="DISCARD all uncommitted changes"
         gitCommand={`git reset --hard ${node.shortHash}`}
@@ -173,7 +182,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       <div style={{ height: 1, backgroundColor: 'var(--vscode-menu-separatorBackground, #3c3c3c)', margin: '4px 0' }} />
 
       <MenuItem
-        icon="📋"
+        icon={<IconCopy size={14} color="currentColor" />}
         title="Copy Commit SHA"
         gitCommand={node.hash}
         beginnerMode={false}
@@ -187,7 +196,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 };
 
 interface MenuItemProps {
-  icon: string;
+  icon: React.ReactNode;
   title: string;
   beginnerSubtitle?: string;
   gitCommand: string;
@@ -226,12 +235,14 @@ const MenuItem: React.FC<MenuItemProps> = ({
         e.currentTarget.style.backgroundColor = 'transparent';
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span>{icon}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16 }}>
+          {icon}
+        </span>
         <span style={{ fontWeight: 500 }}>{title}</span>
       </div>
       {beginnerMode && beginnerSubtitle && (
-        <span style={{ fontSize: 10, opacity: 0.7, paddingLeft: 22 }}>
+        <span style={{ fontSize: 10, opacity: 0.7, paddingLeft: 26 }}>
           {beginnerSubtitle}
         </span>
       )}
@@ -240,7 +251,7 @@ const MenuItem: React.FC<MenuItemProps> = ({
           fontSize: 10,
           fontFamily: 'monospace',
           opacity: 0.5,
-          paddingLeft: 22,
+          paddingLeft: 26,
         }}
       >
         {gitCommand}

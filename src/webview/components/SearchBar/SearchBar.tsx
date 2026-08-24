@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAppStore } from '../../store/store';
 import { messageBus } from '../../store/message-bus';
+import { IconTree, IconTimeline, IconBook, IconFetch } from '../Icons/Icons';
 
 export const SearchBar: React.FC = () => {
   const {
@@ -43,8 +44,8 @@ export const SearchBar: React.FC = () => {
     >
       {/* Brand & Stats */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 'bold', fontSize: 13 }}>
-          <span style={{ color: '#4ec9b0', fontSize: 16 }}>🌳</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 'bold', fontSize: 13 }}>
+          <IconTree size={16} color="#4ec9b0" />
           <span>BetterGitGraph</span>
         </div>
         <div style={{ display: 'flex', gap: 6, opacity: 0.7, fontSize: 11 }}>
@@ -62,6 +63,7 @@ export const SearchBar: React.FC = () => {
           border: '1px solid var(--vscode-editorWidget-border, #3c3c3c)',
           borderRadius: 6,
           padding: 2,
+          gap: 2,
         }}
       >
         <button
@@ -74,7 +76,8 @@ export const SearchBar: React.FC = () => {
             fontWeight: viewMode === 'topo' ? 600 : 400,
           }}
         >
-          🌳 Tree View
+          <IconTree size={13} style={{ marginRight: 6 }} />
+          Tree View
         </button>
         <button
           onClick={() => setViewMode('temporal')}
@@ -86,7 +89,8 @@ export const SearchBar: React.FC = () => {
             fontWeight: viewMode === 'temporal' ? 600 : 400,
           }}
         >
-          ⏱️ Timeline View
+          <IconTimeline size={13} style={{ marginRight: 6 }} />
+          Timeline View
         </button>
       </div>
 
@@ -149,7 +153,8 @@ export const SearchBar: React.FC = () => {
             opacity: isFetching ? 0.6 : 1,
           }}
         >
-          {isFetching ? 'Fetching…' : '↓ Fetch All'}
+          <IconFetch size={13} />
+          {isFetching ? 'Fetching…' : 'Fetch All'}
         </button>
 
         {/* Orientation Toggle */}
@@ -158,7 +163,7 @@ export const SearchBar: React.FC = () => {
           title="Toggle Layout Direction"
           style={secondaryBtnStyle}
         >
-          {layoutDirection === 'TB' ? '↓ Top-Bottom' : '→ Left-Right'}
+          {layoutDirection === 'TB' ? 'Top-Bottom' : 'Left-Right'}
         </button>
 
         {/* Beginner Mode Toggle */}
@@ -167,11 +172,15 @@ export const SearchBar: React.FC = () => {
           title="Toggle Beginner Mode Explanations"
           style={{
             ...secondaryBtnStyle,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
             backgroundColor: beginnerMode ? 'rgba(78, 201, 176, 0.2)' : 'transparent',
             borderColor: beginnerMode ? '#4ec9b0' : 'var(--vscode-button-secondaryBorder, #454545)',
           }}
         >
-          🎓 Beginner Mode: {beginnerMode ? 'ON' : 'OFF'}
+          <IconBook size={13} color={beginnerMode ? '#4ec9b0' : 'currentColor'} />
+          Beginner Mode: {beginnerMode ? 'ON' : 'OFF'}
         </button>
       </div>
     </header>
@@ -184,6 +193,8 @@ const pillStyle: React.CSSProperties = {
   padding: '4px 10px',
   cursor: 'pointer',
   fontSize: 11,
+  display: 'inline-flex',
+  alignItems: 'center',
   transition: 'all 0.15s',
 };
 

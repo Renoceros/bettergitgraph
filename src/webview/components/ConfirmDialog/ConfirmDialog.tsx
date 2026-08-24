@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import type { GitOperation } from '../../../extension/operation-executor';
+import { IconDanger, IconInfo } from '../Icons/Icons';
 
 export interface ConfirmDialogProps {
   operation: GitOperation;
@@ -15,7 +16,6 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   const cancelBtnRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
-    // Focus Cancel button by default for safety
     cancelBtnRef.current?.focus();
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -105,7 +105,11 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       >
         {/* Title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 20 }}>{details.isDestructive ? '🚨' : 'ℹ️'}</span>
+          {details.isDestructive ? (
+            <IconDanger size={20} color="#f14c4c" />
+          ) : (
+            <IconInfo size={20} color="#3794ff" />
+          )}
           <h3
             style={{
               margin: 0,
