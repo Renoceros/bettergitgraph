@@ -93,6 +93,10 @@ class MessageBus {
       case 'HIGHLIGHT_BRANCH':
         store.setHighlightedBranch(message.payload.branch);
         break;
+
+      case 'THEME_CHANGE':
+        store.setTheme(message.payload.theme);
+        break;
     }
   };
 }

@@ -63,6 +63,7 @@ export interface AppState {
   setLayoutDirection: (dir: LayoutDirection) => void;
   setDateFormat: (format: DateFormat) => void;
   setBeginnerMode: (enabled: boolean) => void;
+  setTheme: (theme: 'dark' | 'light' | 'high-contrast') => void;
   setViewport: (updater: (prev: Viewport) => Viewport) => void;
   resetViewport: () => void;
   fitToScreen: () => void;
@@ -197,6 +198,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setBeginnerMode: (beginnerMode) => set({ beginnerMode }),
+
+  setTheme: (theme) => {
+    set({ theme });
+    get().recomputeLayout();
+  },
 
   setViewport: (updater) =>
     set((state) => ({ viewport: updater(state.viewport) })),

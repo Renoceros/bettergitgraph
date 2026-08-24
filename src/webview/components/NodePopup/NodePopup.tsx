@@ -47,9 +47,9 @@ export const NodePopup: React.FC<NodePopupProps> = ({
   });
 
   const popupWidth = 360;
-  const popupHeight = 440;
-  const left = Math.min(Math.max(20, screenX + 20), window.innerWidth - popupWidth - 20);
-  const top = Math.min(Math.max(60, screenY - 50), window.innerHeight - popupHeight - 20);
+  const popupHeight = 460;
+  const left = Math.max(16, Math.min(screenX + 20, window.innerWidth - popupWidth - 16));
+  const top = Math.max(50, Math.min(screenY - 40, window.innerHeight - popupHeight - 16));
 
   return (
     <div
@@ -59,7 +59,7 @@ export const NodePopup: React.FC<NodePopupProps> = ({
         left,
         top,
         width: popupWidth,
-        maxHeight: popupHeight,
+        maxHeight: 'min(460px, calc(100vh - 70px))',
         backgroundColor: 'var(--vscode-editorWidget-background, #252526)',
         color: 'var(--vscode-foreground, #cccccc)',
         border: '1px solid var(--vscode-editorWidget-border, #454545)',

@@ -219,11 +219,14 @@ export class CanvasRenderer {
       ctx.setLineDash([]);
 
       // 2. Draw Plaque Container (Card)
+      const isMatched = options.filteredHashes ? options.filteredHashes.has(node.hash) : false;
       const plaqueBg = isDark
         ? (isSelected ? '#2d2d30' : '#252526')
         : (isSelected ? '#e8f4fc' : '#f8f9fa');
       const borderColor = isSelected
         ? '#4ec9b0'
+        : isMatched
+        ? '#ffd43b'
         : isHovered
         ? (isDark ? '#888888' : '#aaaaaa')
         : (isDark ? '#3c3c3c' : '#d0d7de');
@@ -233,7 +236,7 @@ export class CanvasRenderer {
       ctx.fillStyle = plaqueBg;
       ctx.fill();
       ctx.strokeStyle = borderColor;
-      ctx.lineWidth = isSelected ? 1.8 : 1;
+      ctx.lineWidth = isSelected || isMatched ? 1.8 : 1;
       ctx.stroke();
 
       // 3. Draw Type Badge Pill

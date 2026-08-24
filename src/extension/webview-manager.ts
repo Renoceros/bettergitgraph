@@ -52,9 +52,21 @@ export class WebviewManager {
     this.panel.webview.onDidReceiveMessage(
       async (msg: WebviewToHostMessage) => {
         switch (msg.type) {
-          case 'READY':
+          case 'READY': {
+            const currentKind = vscode.window.activeColorTheme.kind;
+            const theme =
+              currentKind === vscode.ColorThemeKind.Light
+                ? 'light'
+                : currentKind === vscode.ColorThemeKind.HighContrast || currentKind === vscode.ColorThemeKind.HighContrastLight
+                ? 'high-contrast'
+                : 'dark';
+            await this.panel?.webview.postMessage({
+              type: 'THEME_CHANGE',
+              payload: { theme },
+            });
             await this.sendGraphData();
             break;
+          }
 
           case 'REQUEST_GRAPH':
             await this.sendGraphData(msg.payload?.maxCount);
@@ -123,6 +135,24 @@ export class WebviewManager {
             break;
           }
         }
+      },
+      undefined,
+      this.context.subscriptions
+    );
+
+    vscode.window.onDidChangeActiveColorTheme(
+      (theme) => {
+        if (!this.panel) return;
+        const themeKind =
+          theme.kind === vscode.ColorThemeKind.Light
+            ? 'light'
+            : theme.kind === vscode.ColorThemeKind.HighContrast || theme.kind === vscode.ColorThemeKind.HighContrastLight
+            ? 'high-contrast'
+            : 'dark';
+        this.panel.webview.postMessage({
+          type: 'THEME_CHANGE',
+          payload: { theme: themeKind },
+        });
       },
       undefined,
       this.context.subscriptions

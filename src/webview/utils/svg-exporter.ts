@@ -87,8 +87,27 @@ export function exportGraphToSvg(
     if (!node.plaque) continue;
     const { plaque } = node;
 
-    // Connector stem line from node to plaque
-    svg += `    <line x1="${node.x}" y1="${node.y}" x2="${plaque.x}" y2="${plaque.y + plaque.height / 2}" stroke="${node.branchColor}" stroke-width="1.5" stroke-dasharray="2,2" opacity="0.6" />\n`;
+    // Connector stem line from node to plaque based on placement
+    let lineX1 = node.x;
+    let lineY1 = node.y;
+    let lineX2 = plaque.x;
+    let lineY2 = node.y;
+
+    if (plaque.placement === 'top') {
+      lineY1 = node.y - node.radius;
+      lineX2 = node.x;
+      lineY2 = plaque.y + plaque.height;
+    } else if (plaque.placement === 'bottom') {
+      lineY1 = node.y + node.radius;
+      lineX2 = node.x;
+      lineY2 = plaque.y;
+    } else {
+      lineX1 = node.x + node.radius;
+      lineX2 = plaque.x;
+      lineY2 = node.y;
+    }
+
+    svg += `    <line x1="${lineX1}" y1="${lineY1}" x2="${lineX2}" y2="${lineY2}" stroke="${node.branchColor}" stroke-width="1.5" stroke-dasharray="2,2" opacity="0.6" />\n`;
 
     // Group wrapped in clipPath
     svg += `    <g clip-path="url(#clip-${node.shortHash})">\n`;
