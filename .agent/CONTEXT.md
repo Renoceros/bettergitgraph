@@ -40,6 +40,11 @@
 - [ ] Vite build deps (React, Zustand, dagre) not yet installed
 
 ## Agent Instructions
+
+> [!IMPORTANT]
+> Read `.agent/AGENT_PROTOCOL.md` before your first session. It is the law.
+> It defines: session lifecycle, branch workflow, testing protocol, bug catching, PR rules, taboos, and emergency procedures.
+
 When starting a new session on this repo:
 1. **Read this file first** — understand current state before touching anything.
 2. **Read `.agent/TASKS.md`** — find the next open task. Each task card specifies:
