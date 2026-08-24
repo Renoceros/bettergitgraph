@@ -1,0 +1,250 @@
+import React, { useState } from 'react';
+import type { LayoutNode } from '../GraphCanvas/dag-layout';
+import type { ChangedFile } from '../../../extension/git-data';
+import type { GitOperation } from '../../../extension/operation-executor';
+import { FileList } from '../CommitDetail/FileList';
+import { messageBus } from '../../store/message-bus';
+
+export interface NodePopupProps {
+  node: LayoutNode;
+  files: ChangedFile[];
+  loadingFiles: boolean;
+  screenX: number;
+  screenY: number;
+  onSelectParent: (hash: string) => void;
+  onExecuteOperation: (op: GitOperation, requiresConfirm?: boolean) => void;
+  onClose: () => void;
+}
+
+export const NodePopup: React.FC<NodePopupProps> = ({
+  node,
+  files,
+  loadingFiles,
+  screenX,
+  screenY,
+  onSelectParent,
+  onExecuteOperation,
+  onClose,
+}) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyHash = () => {
+    navigator.clipboard.writeText(node.hash);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const formattedDate = new Date(node.date).toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+
+  // Calculate safe positioning on screen
+  const popupWidth = 360;
+  const popupHeight = 440;
+  const left = Math.min(Math.max(20, screenX + 20), window.innerWidth - popupWidth - 20);
+  const top = Math.min(Math.max(60, screenY - 50), window.innerHeight - popupHeight - 20);
+
+  return (
+    <div
+      role="dialog"
+      style={{
+        position: 'fixed',
+        left,
+        top,
+        width: popupWidth,
+        maxHeight: popupHeight,
+        backgroundColor: 'var(--vscode-editorWidget-background, #252526)',
+        color: 'var(--vscode-foreground, #cccccc)',
+        border: '1px solid var(--vscode-editorWidget-border, #454545)',
+        borderRadius: 8,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.55)',
+        zIndex: 1500,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        fontSize: 12,
+        userSelect: 'none',
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Popup Header */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '10px 14px',
+          borderBottom: '1px solid var(--vscode-editorWidget-border, #3c3c3c)',
+          backgroundColor: 'var(--vscode-titleBar-activeBackground, #1e1e1e)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 4,
+              fontSize: 11,
+              fontWeight: 'bold',
+              backgroundColor: node.isMainBranch ? 'rgba(78,201,176,0.2)' : 'rgba(86,156,214,0.2)',
+              color: node.isMainBranch ? '#4ec9b0' : '#569cd6',
+              border: `1px solid ${node.isMainBranch ? '#4ec9b0' : '#569cd6'}`,
+            }}
+          >
+            {node.nodeType.toUpperCase()}
+          </span>
+          <span style={{ fontWeight: 600 }}>{node.branchName}</span>
+        </div>
+        <button
+          onClick={onClose}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--vscode-foreground)',
+            cursor: 'pointer',
+            fontSize: 16,
+            lineHeight: 1,
+            padding: 2,
+          }}
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Body Content */}
+      <div style={{ padding: 14, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {/* Title */}
+        <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.4, color: 'var(--vscode-foreground)' }}>
+          {node.subject}
+        </div>
+
+        {/* Metadata */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+            fontSize: 11,
+            backgroundColor: 'rgba(0,0,0,0.15)',
+            padding: 8,
+            borderRadius: 6,
+          }}
+        >
+          <div>
+            <strong>Author:</strong> {node.author} &lt;{node.authorEmail}&gt;
+          </div>
+          <div>
+            <strong>Date:</strong> {formattedDate} ({node.relativeTime})
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+            <strong>SHA:</strong>
+            <button
+              onClick={handleCopyHash}
+              style={{
+                background: 'none',
+                border: '1px solid #555',
+                borderRadius: 4,
+                padding: '1px 6px',
+                fontSize: 10,
+                fontFamily: 'monospace',
+                color: 'var(--vscode-foreground)',
+                cursor: 'pointer',
+              }}
+            >
+              {copied ? '✓ Copied' : node.shortHash}
+            </button>
+          </div>
+        </div>
+
+        {/* Parent Commits Navigation */}
+        {node.parents.length > 0 && (
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', opacity: 0.7, marginBottom: 4 }}>
+              Parents ({node.parents.length})
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {node.parents.map((parentHash) => (
+                <button
+                  key={parentHash}
+                  onClick={() => onSelectParent(parentHash)}
+                  style={{
+                    background: 'var(--vscode-badge-background, #4d4d4d)',
+                    color: 'var(--vscode-badge-foreground, #ffffff)',
+                    border: 'none',
+                    borderRadius: 4,
+                    padding: '2px 8px',
+                    fontSize: 11,
+                    fontFamily: 'monospace',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {parentHash.slice(0, 8)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Changed Files */}
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', opacity: 0.7 }}>
+            Changed Files
+          </div>
+          <FileList hash={node.hash} files={files} loading={loadingFiles} />
+        </div>
+
+        {/* Action Buttons */}
+        <div
+          style={{
+            display: 'flex',
+            gap: 6,
+            flexWrap: 'wrap',
+            paddingTop: 8,
+            borderTop: '1px solid var(--vscode-editorWidget-border, #3c3c3c)',
+          }}
+        >
+          <button
+            onClick={() => onExecuteOperation({ op: 'CHECKOUT', hash: node.hash })}
+            style={actionBtnStyle}
+          >
+            🚀 Checkout
+          </button>
+          <button
+            onClick={() => {
+              const branchName = window.prompt('New branch name:');
+              if (branchName?.trim()) {
+                onExecuteOperation({ op: 'CREATE_BRANCH', name: branchName.trim(), hash: node.hash });
+              }
+            }}
+            style={actionBtnStyle}
+          >
+            🌿 Branch
+          </button>
+          <button
+            onClick={() => onExecuteOperation({ op: 'REVERT', hash: node.hash }, true)}
+            style={actionBtnStyle}
+          >
+            ⏪ Revert
+          </button>
+          <button
+            onClick={() => onExecuteOperation({ op: 'RESET', mode: 'hard', hash: node.hash }, true)}
+            style={{ ...actionBtnStyle, color: '#f14c4c', borderColor: '#f14c4c' }}
+          >
+            🚨 Reset Hard
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const actionBtnStyle: React.CSSProperties = {
+  backgroundColor: 'var(--vscode-button-secondaryBackground, #3a3d41)',
+  color: 'var(--vscode-button-secondaryForeground, #ffffff)',
+  border: '1px solid var(--vscode-button-secondaryBorder, #454545)',
+  borderRadius: 4,
+  padding: '4px 8px',
+  cursor: 'pointer',
+  fontSize: 11,
+  fontWeight: 500,
+};

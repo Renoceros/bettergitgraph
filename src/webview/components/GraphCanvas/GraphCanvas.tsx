@@ -4,6 +4,7 @@ import { CanvasRenderer } from './renderer';
 import { messageBus } from '../../store/message-bus';
 import { ContextMenu } from '../ContextMenu/ContextMenu';
 import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog';
+import { NodePopup } from '../NodePopup/NodePopup';
 import type { LayoutNode } from './dag-layout';
 import type { GitOperation } from '../../../extension/operation-executor';
 
@@ -19,6 +20,12 @@ export const GraphCanvas: React.FC = () => {
     node: LayoutNode;
   } | null>(null);
 
+  const [popupNodeState, setPopupNodeState] = useState<{
+    node: LayoutNode;
+    screenX: number;
+    screenY: number;
+  } | null>(null);
+
   const [pendingConfirmOp, setPendingConfirmOp] = useState<GitOperation | null>(null);
 
   const {
@@ -29,6 +36,7 @@ export const GraphCanvas: React.FC = () => {
     highlightedBranch,
     filteredHashes,
     beginnerMode,
+    commitDetail,
     theme,
     setViewport,
     selectCommit,
@@ -126,7 +134,7 @@ export const GraphCanvas: React.FC = () => {
     const dx = Math.abs(e.clientX - lastMousePosRef.current.x);
     const dy = Math.abs(e.clientY - lastMousePosRef.current.y);
 
-    // Click threshold
+    // Click on node opens popup details card
     if (dx < 5 && dy < 5 && rendererRef.current && layout) {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -137,12 +145,18 @@ export const GraphCanvas: React.FC = () => {
       const clickedNode = rendererRef.current.hitTest(clickX, clickY, layout, viewport);
       if (clickedNode) {
         selectCommit(clickedNode.hash);
+        setPopupNodeState({
+          node: clickedNode,
+          screenX: e.clientX,
+          screenY: e.clientY,
+        });
         messageBus.send({
           type: 'REQUEST_COMMIT_FILES',
           payload: { hash: clickedNode.hash },
         });
       } else {
         selectCommit(null);
+        setPopupNodeState(null);
       }
     }
   };
@@ -186,6 +200,27 @@ export const GraphCanvas: React.FC = () => {
     const finalOp = { ...pendingConfirmOp, confirmed: true };
     messageBus.send({ type: 'EXECUTE_OPERATION', payload: finalOp });
     setPendingConfirmOp(null);
+  };
+
+  const handleSelectParent = (parentHash: string) => {
+    if (!layout) return;
+    const parentNode = layout.nodeMap.get(parentHash);
+    if (parentNode) {
+      selectCommit(parentNode.hash);
+      setPopupNodeState((prev) =>
+        prev ? { ...prev, node: parentNode } : null
+      );
+      // Pan viewport to center parent node
+      setViewport((prev) => ({
+        ...prev,
+        x: prev.width / 2 - parentNode.x,
+        y: prev.height / 3 - parentNode.y,
+      }));
+      messageBus.send({
+        type: 'REQUEST_COMMIT_FILES',
+        payload: { hash: parentNode.hash },
+      });
+    }
   };
 
   // ── Cursor-Centered Zoom ────────────────────────────────────────────────────
@@ -283,6 +318,20 @@ export const GraphCanvas: React.FC = () => {
           Center HEAD
         </button>
       </div>
+
+      {/* Floating Node Details Popup */}
+      {popupNodeState && (
+        <NodePopup
+          node={popupNodeState.node}
+          files={commitDetail?.files ?? []}
+          loadingFiles={commitDetail?.loading ?? false}
+          screenX={popupNodeState.screenX}
+          screenY={popupNodeState.screenY}
+          onSelectParent={handleSelectParent}
+          onExecuteOperation={handleSelectOperation}
+          onClose={() => setPopupNodeState(null)}
+        />
+      )}
 
       {/* Right-Click Context Menu */}
       {contextMenu && (

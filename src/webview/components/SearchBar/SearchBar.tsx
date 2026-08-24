@@ -8,10 +8,12 @@ export const SearchBar: React.FC = () => {
     branches,
     searchQuery,
     filteredHashes,
+    viewMode,
     layoutDirection,
     beginnerMode,
     isFetching,
     setSearchQuery,
+    setViewMode,
     setLayoutDirection,
     setBeginnerMode,
     setIsFetching,
@@ -32,7 +34,7 @@ export const SearchBar: React.FC = () => {
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '0 16px',
-        gap: 16,
+        gap: 12,
         color: 'var(--vscode-foreground, #cccccc)',
         fontSize: 12,
         userSelect: 'none',
@@ -42,23 +44,59 @@ export const SearchBar: React.FC = () => {
       {/* Brand & Stats */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 'bold', fontSize: 13 }}>
-          <span style={{ color: '#4ec9b0' }}>●</span>
+          <span style={{ color: '#4ec9b0', fontSize: 16 }}>🌳</span>
           <span>BetterGitGraph</span>
         </div>
-        <div style={{ display: 'flex', gap: 8, opacity: 0.7, fontSize: 11 }}>
+        <div style={{ display: 'flex', gap: 6, opacity: 0.7, fontSize: 11 }}>
           <span>{commits.length} commits</span>
           <span>•</span>
           <span>{branches.length} branches</span>
         </div>
       </div>
 
+      {/* View Mode Switcher (Tree Structure vs Timeline) */}
+      <div
+        style={{
+          display: 'flex',
+          backgroundColor: 'var(--vscode-editorWidget-background, #252526)',
+          border: '1px solid var(--vscode-editorWidget-border, #3c3c3c)',
+          borderRadius: 6,
+          padding: 2,
+        }}
+      >
+        <button
+          onClick={() => setViewMode('topo')}
+          title="Tree Structure View: Commits structured by parent-child branches & merges"
+          style={{
+            ...pillStyle,
+            backgroundColor: viewMode === 'topo' ? 'var(--vscode-button-background, #0e639c)' : 'transparent',
+            color: viewMode === 'topo' ? '#ffffff' : 'var(--vscode-foreground)',
+            fontWeight: viewMode === 'topo' ? 600 : 400,
+          }}
+        >
+          🌳 Tree View
+        </button>
+        <button
+          onClick={() => setViewMode('temporal')}
+          title="Timeline View: Commits ordered strictly chronologically by time with main as central trunk"
+          style={{
+            ...pillStyle,
+            backgroundColor: viewMode === 'temporal' ? 'var(--vscode-button-background, #0e639c)' : 'transparent',
+            color: viewMode === 'temporal' ? '#ffffff' : 'var(--vscode-foreground)',
+            fontWeight: viewMode === 'temporal' ? 600 : 400,
+          }}
+        >
+          ⏱️ Timeline View
+        </button>
+      </div>
+
       {/* Search Input */}
-      <div style={{ flex: 1, maxWidth: 400, position: 'relative' }}>
+      <div style={{ flex: 1, maxWidth: 360, position: 'relative' }}>
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search commits by message, author, SHA, ref…"
+          placeholder="Filter by title, author, branch, SHA…"
           style={{
             width: '100%',
             backgroundColor: 'var(--vscode-input-background, #3c3c3c)',
@@ -114,10 +152,10 @@ export const SearchBar: React.FC = () => {
           {isFetching ? 'Fetching…' : '↓ Fetch All'}
         </button>
 
-        {/* Direction Toggle */}
+        {/* Orientation Toggle */}
         <button
           onClick={() => setLayoutDirection(layoutDirection === 'TB' ? 'LR' : 'TB')}
-          title="Toggle Layout Orientation"
+          title="Toggle Layout Direction"
           style={secondaryBtnStyle}
         >
           {layoutDirection === 'TB' ? '↓ Top-Bottom' : '→ Left-Right'}
@@ -129,12 +167,8 @@ export const SearchBar: React.FC = () => {
           title="Toggle Beginner Mode Explanations"
           style={{
             ...secondaryBtnStyle,
-            backgroundColor: beginnerMode
-              ? 'rgba(78, 201, 176, 0.2)'
-              : 'transparent',
-            borderColor: beginnerMode
-              ? '#4ec9b0'
-              : 'var(--vscode-button-secondaryBorder, #454545)',
+            backgroundColor: beginnerMode ? 'rgba(78, 201, 176, 0.2)' : 'transparent',
+            borderColor: beginnerMode ? '#4ec9b0' : 'var(--vscode-button-secondaryBorder, #454545)',
           }}
         >
           🎓 Beginner Mode: {beginnerMode ? 'ON' : 'OFF'}
@@ -142,6 +176,15 @@ export const SearchBar: React.FC = () => {
       </div>
     </header>
   );
+};
+
+const pillStyle: React.CSSProperties = {
+  border: 'none',
+  borderRadius: 4,
+  padding: '4px 10px',
+  cursor: 'pointer',
+  fontSize: 11,
+  transition: 'all 0.15s',
 };
 
 const secondaryBtnStyle: React.CSSProperties = {

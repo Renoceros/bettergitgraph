@@ -39,7 +39,8 @@ export interface AppState {
   authorFilter: string[];
   branchFilter: string[];
 
-  // Settings & UX
+  // Settings & Views
+  viewMode: 'topo' | 'temporal';
   beginnerMode: boolean;
   layoutDirection: 'TB' | 'LR';
   nodeRadius: number;
@@ -57,6 +58,7 @@ export interface AppState {
   setSearchQuery: (query: string) => void;
   setAuthorFilter: (authors: string[]) => void;
   setBranchFilter: (branches: string[]) => void;
+  setViewMode: (mode: 'topo' | 'temporal') => void;
   setBeginnerMode: (enabled: boolean) => void;
   setLayoutDirection: (dir: 'TB' | 'LR') => void;
   setViewport: (updater: (prev: Viewport) => Viewport) => void;
@@ -82,6 +84,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   filteredHashes: null,
   authorFilter: [],
   branchFilter: [],
+  viewMode: 'topo',
   beginnerMode: true,
   layoutDirection: 'TB',
   nodeRadius: 8,
@@ -91,13 +94,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   lastFetchResult: null,
 
   setGraphData: (commits, branches) => {
-    const { layoutDirection, nodeRadius, theme } = get();
+    const { layoutDirection, viewMode, nodeRadius, theme } = get();
     colorEngine.setTheme(theme);
     const branchNames = branches.map((b) => b.name);
     const colorMap = colorEngine.getAllColors(branchNames);
 
     const layout = layoutEngine.layout(commits, branches, colorMap, {
       direction: layoutDirection,
+      viewMode,
       nodeRadius,
     });
 
@@ -105,13 +109,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   recomputeLayout: () => {
-    const { commits, branches, layoutDirection, nodeRadius, theme } = get();
+    const { commits, branches, layoutDirection, viewMode, nodeRadius, theme } = get();
     colorEngine.setTheme(theme);
     const branchNames = branches.map((b) => b.name);
     const colorMap = colorEngine.getAllColors(branchNames);
 
     const layout = layoutEngine.layout(commits, branches, colorMap, {
       direction: layoutDirection,
+      viewMode,
       nodeRadius,
     });
 
@@ -169,6 +174,12 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setAuthorFilter: (authors) => set({ authorFilter: authors }),
   setBranchFilter: (branches) => set({ branchFilter: branches }),
+
+  setViewMode: (viewMode) => {
+    set({ viewMode });
+    get().recomputeLayout();
+  },
+
   setBeginnerMode: (beginnerMode) => set({ beginnerMode }),
 
   setLayoutDirection: (layoutDirection) => {
