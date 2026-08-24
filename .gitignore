@@ -5,4 +5,3 @@ out/
 *.vsix
 .DS_Store
 *.log
-.agent
