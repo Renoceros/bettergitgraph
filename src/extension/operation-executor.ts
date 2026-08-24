@@ -31,6 +31,28 @@ export interface OperationLogEntry {
   result: OperationResult;
 }
 
+// ─── Security Validation Helpers ──────────────────────────────────────────────
+
+function isValidRefName(name: string): boolean {
+  if (!name || typeof name !== 'string') return false;
+  const trimmed = name.trim();
+  // Disallow leading dashes (prevents git flag injection), null bytes, newlines, and control chars
+  if (trimmed.startsWith('-') || /[\x00-\x1f\x7f\s~^:?*\[\\]/.test(trimmed)) {
+    return false;
+  }
+  return trimmed.length > 0 && trimmed.length <= 255;
+}
+
+function isValidHash(hash: string): boolean {
+  if (!hash || typeof hash !== 'string') return false;
+  const trimmed = hash.trim();
+  // Valid commit SHA (7 to 40 hex chars) or standard ref
+  if (trimmed.startsWith('-') || /[\x00-\x1f\x7f\s]/.test(trimmed)) {
+    return false;
+  }
+  return /^[0-9a-fA-F]{4,40}$/.test(trimmed) || isValidRefName(trimmed);
+}
+
 // ─── GitOperationExecutor ─────────────────────────────────────────────────────
 
 export class GitOperationExecutor {
@@ -50,7 +72,9 @@ export class GitOperationExecutor {
       switch (op.op) {
         case 'CHECKOUT': {
           const target = op.branch || op.hash;
-          if (!target) throw new Error('Target branch or commit hash required for checkout.');
+          if (!target || (!isValidHash(target) && !isValidRefName(target))) {
+            throw new Error('Valid target branch or commit hash required for checkout.');
+          }
           await this.git.checkout(target);
           result = {
             success: true,
@@ -61,6 +85,9 @@ export class GitOperationExecutor {
         }
 
         case 'RESET': {
+          if (!isValidHash(op.hash)) {
+            throw new Error('Invalid commit hash for reset.');
+          }
           if (op.mode === 'hard' && !op.confirmed) {
             return {
               success: false,
@@ -80,6 +107,9 @@ export class GitOperationExecutor {
         }
 
         case 'REVERT': {
+          if (!isValidHash(op.hash)) {
+            throw new Error('Invalid commit hash for revert.');
+          }
           await this.git.revert(op.hash);
           result = {
             success: true,
@@ -90,6 +120,9 @@ export class GitOperationExecutor {
         }
 
         case 'CHERRY_PICK': {
+          if (!isValidHash(op.hash)) {
+            throw new Error('Invalid commit hash for cherry-pick.');
+          }
           await this.git.raw(['cherry-pick', op.hash]);
           result = {
             success: true,
@@ -100,6 +133,12 @@ export class GitOperationExecutor {
         }
 
         case 'CREATE_BRANCH': {
+          if (!isValidRefName(op.name)) {
+            throw new Error(`Invalid branch name '${op.name}'.`);
+          }
+          if (!isValidHash(op.hash)) {
+            throw new Error('Invalid commit hash for branch base.');
+          }
           await this.git.branch([op.name, op.hash]);
           result = {
             success: true,
@@ -110,6 +149,9 @@ export class GitOperationExecutor {
         }
 
         case 'DELETE_BRANCH': {
+          if (!isValidRefName(op.name)) {
+            throw new Error(`Invalid branch name '${op.name}'.`);
+          }
           if (op.force && !op.confirmed) {
             return {
               success: false,
@@ -129,6 +171,9 @@ export class GitOperationExecutor {
         }
 
         case 'MERGE': {
+          if (!isValidRefName(op.branch)) {
+            throw new Error(`Invalid branch name '${op.branch}'.`);
+          }
           const args = [op.branch];
           if (op.strategy === 'no-ff') args.push('--no-ff');
           if (op.strategy === 'squash') args.push('--squash');
@@ -142,6 +187,9 @@ export class GitOperationExecutor {
         }
 
         case 'REBASE': {
+          if (!isValidRefName(op.branch)) {
+            throw new Error(`Invalid branch name '${op.branch}'.`);
+          }
           await this.git.rebase([op.branch]);
           result = {
             success: true,
@@ -152,6 +200,12 @@ export class GitOperationExecutor {
         }
 
         case 'TAG': {
+          if (!isValidRefName(op.name)) {
+            throw new Error(`Invalid tag name '${op.name}'.`);
+          }
+          if (!isValidHash(op.hash)) {
+            throw new Error('Invalid commit hash for tag.');
+          }
           if (op.message) {
             await this.git.addAnnotatedTag(op.name, op.message);
           } else {

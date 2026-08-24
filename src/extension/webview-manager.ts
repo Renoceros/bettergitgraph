@@ -92,12 +92,16 @@ export class WebviewManager {
 
           case 'OPEN_DIFF': {
             const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-            if (workspaceRoot) {
-              const fileUri = vscode.Uri.file(path.join(workspaceRoot, msg.payload.filePath));
-              try {
-                await vscode.commands.executeCommand('vscode.open', fileUri);
-              } catch (e) {
-                console.error('[BetterGitGraph] Failed to open file:', e);
+            if (workspaceRoot && msg.payload.filePath) {
+              const resolvedPath = path.resolve(workspaceRoot, msg.payload.filePath);
+              // Ensure path cannot traverse outside workspace root
+              if (resolvedPath.startsWith(workspaceRoot)) {
+                const fileUri = vscode.Uri.file(resolvedPath);
+                try {
+                  await vscode.commands.executeCommand('vscode.open', fileUri);
+                } catch (e) {
+                  console.error('[BetterGitGraph] Failed to open file:', e);
+                }
               }
             }
             break;
