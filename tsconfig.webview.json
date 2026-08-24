@@ -1,0 +1,23 @@
+// Webview TypeScript config — targets the browser runtime
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "@/*": ["./src/webview/*"]
+    }
+  },
+  "include": ["src/webview/**/*", "vite.config.ts", "index.html"],
+  "exclude": ["node_modules", "dist", "out"]
+}

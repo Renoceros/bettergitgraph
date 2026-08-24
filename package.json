@@ -1,0 +1,128 @@
+{
+  "name": "bettergitgraph",
+  "displayName": "BetterGitGraph",
+  "description": "Beautiful, interactive git graph for VS Code — built for everyone.",
+  "version": "0.0.1",
+  "publisher": "Renoceros",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Renoceros/bettergitgraph"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Visualization"
+  ],
+  "keywords": [
+    "git",
+    "graph",
+    "history",
+    "branches",
+    "visualization"
+  ],
+  "icon": "resources/icon.png",
+  "activationEvents": [
+    "workspaceContains:.git"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "bettergitgraph.open",
+        "title": "BetterGitGraph: Open Graph",
+        "icon": "$(git-branch)"
+      },
+      {
+        "command": "bettergitgraph.fetchAll",
+        "title": "BetterGitGraph: Fetch All Remotes"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "bettergitgraph.open",
+        "key": "ctrl+shift+g g",
+        "mac": "cmd+shift+g g",
+        "when": "!inputFocus"
+      }
+    ],
+    "views": {
+      "scm": [
+        {
+          "id": "bettergitgraph.branchExplorer",
+          "name": "Branch Explorer",
+          "when": "gitOpenRepositoryCount > 0"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "BetterGitGraph",
+      "properties": {
+        "bettergitgraph.layoutDirection": {
+          "type": "string",
+          "enum": ["TB", "LR"],
+          "default": "TB",
+          "description": "Graph layout direction: Top-to-Bottom or Left-to-Right."
+        },
+        "bettergitgraph.beginnerMode": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable beginner mode: show plain-English explanations and confirmations for all git operations."
+        },
+        "bettergitgraph.maxCommits": {
+          "type": "number",
+          "default": 2000,
+          "minimum": 100,
+          "maximum": 50000,
+          "description": "Maximum number of commits to load into the graph."
+        },
+        "bettergitgraph.nodeSize": {
+          "type": "number",
+          "default": 12,
+          "minimum": 8,
+          "maximum": 24,
+          "description": "Radius of commit nodes in the graph (pixels)."
+        }
+      }
+    },
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "bettergitgraph.open",
+          "when": "gitOpenRepositoryCount > 0"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.90.0",
+    "@types/mocha": "^10.0.7",
+    "@types/node": "20.x",
+    "@typescript-eslint/eslint-plugin": "^8.3.0",
+    "@typescript-eslint/parser": "^8.3.0",
+    "eslint": "^9.9.1",
+    "esbuild": "^0.23.0",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.5.4",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1"
+  },
+  "dependencies": {
+    "simple-git": "^3.26.0"
+  }
+}
