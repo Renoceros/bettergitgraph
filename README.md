@@ -16,6 +16,29 @@
   <img src="https://img.shields.io/badge/Privacy-100%25%20Local-success.svg" alt="Privacy Local-First" />
 </p>
 
+<p align="center">
+  <img src="resources/page_example.jpeg" alt="BetterGitGraph Main Interface" width="100%" />
+</p>
+
+---
+
+## ⌨️ Controls, Keybindings & Navigation
+
+| Command / Action | Keybinding (macOS) | Keybinding (Win/Linux) | Description |
+|---|---|---|---|
+| **Open BetterGitGraph** | <kbd>Cmd</kbd> + <kbd>Ctrl</kbd> + <kbd>G</kbd> | <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>G</kbd> | Opens or reveals the interactive graph view |
+| **Pan Canvas** | <kbd>Click</kbd> + <kbd>Drag</kbd> *(Canvas)* | <kbd>Click</kbd> + <kbd>Drag</kbd> *(Canvas)* | Smoothly pan across repository history |
+| **Zoom In / Out** | <kbd>Scroll Wheel</kbd> / <kbd>Pinch</kbd> | <kbd>Scroll Wheel</kbd> / <kbd>Pinch</kbd> | Zoom into detailed plaques or out for wide overview |
+| **Center HEAD Commit** | <kbd>Double Click</kbd> *(Canvas)* | <kbd>Double Click</kbd> *(Canvas)* | Instantly centers viewport on active `HEAD` commit |
+| **Fit to Screen** | Click `⛶ Fit` button | Click `⛶ Fit` button | Dynamically fits all rendered nodes into viewport |
+| **Inspect Commit Details** | <kbd>Click</kbd> *(Node / Plaque)* | <kbd>Click</kbd> *(Node / Plaque)* | Opens floating popup with changed files, parent chips & diff viewer |
+| **Context Operations** | <kbd>Right Click</kbd> *(Node)* | <kbd>Right Click</kbd> *(Node)* | Opens Git operations menu (Checkout, Branch, Tag, Revert, Cherry-Pick, Reset) |
+| **Canvas Export Menu** | <kbd>Right Click</kbd> *(Background)* | <kbd>Right Click</kbd> *(Background)* | Export vector SVG / PNG diagram or center graph |
+| **Open Web Repository** | <kbd>Click</kbd> *(Repo Title)* | <kbd>Click</kbd> *(Repo Title)* | Opens remote origin repository directly in web browser |
+| **Toggle View Mode** | <kbd>Click</kbd> `Timeline / Tree` | <kbd>Click</kbd> `Timeline / Tree` | Switches between chronological timeline & DAG topological tree |
+| **Fetch All Remotes** | Click `Fetch All` button | Click `Fetch All` button | Fetches updates from all remotes in background |
+| **Auto-Fetch Cycle** | Click `Auto: Off` button | Click `Auto: Off` button | Cycles background polling intervals (`Off` $\rightarrow$ `1m` $\rightarrow$ `5m` $\rightarrow$ `15m` $\rightarrow$ `30m` $\rightarrow$ `1h`) |
+
 ---
 
 ## 🌟 Overview
@@ -30,11 +53,40 @@ Most Git graph extensions render commit history as rigid, tabular text logs with
 
 ---
 
+## 🔍 Smart Search & Precision Filtering
+
+BetterGitGraph provides a powerful multi-attribute search engine with real-time highlighting:
+
+<p align="center">
+  <img src="resources/author_tag_search.jpeg" alt="Author and Tag Search Highlighting" width="100%" />
+</p>
+
+### Search Syntax Cheat Sheet
+
+| Syntax / Prefix | Target Scope | Example | Description |
+|---|---|---|---|
+| `@<name>` / `author:<name>` | Author Name & Email | `@renoce` | Highlights only commits authored by users matching `renoce` |
+| `#<branch>` / `branch:<name>` | Branch & Ref Lineage | `#feature/login`, `#404` | Highlights all commits belonging to matching branch names |
+| `file:<path>` / `/<path>` | Changed Files & Paths | `file:dag-layout.ts`, `/components` | Highlights commits that modified, added, or deleted matching files |
+| `msg:<text>` / `title:<text>` | Commit Message / Title | `msg:merge`, `title:release` | Highlights commits matching exact message terms |
+| `"phrase"` | Exact Phrase Match | `"fix token bug"` | Searches commit subjects for exact phrase |
+| `is:<type>` / `type:<type>` | Node Geometry Type | `is:pr`, `is:issue`, `is:merge`, `is:initial` | Highlights specific node types (PRs, Issues, Merges, Roots) |
+| `sha:<hash>` / `hash:<hash>` | Commit Hash | `sha:431511d` | Highlights specific commit hashes |
+| *(no prefix)* | Universal Fuzzy Search | `refactor` | Searches across subject, author, branch, file, and SHA |
+
+<p align="center">
+  <img src="resources/general_search.jpeg" alt="General Search Across Repository" width="100%" />
+</p>
+
+> **Compound Queries:** You can combine multiple search tokens together (e.g. `@renoce is:pr file:dag-layout #main`) to filter complex repository histories instantly.
+
+---
+
 ## ✨ Key Features
 
 ### 1. ⏱️ Dual Visualization Engines & 4-Direction Matrix
-Switch seamlessly between two purpose-built visualization paradigms across 4 flow orientations (`↓ TB`, `↑ BT`, `→ LR`, `← RL`):
-- **Timeline View (Default):** Commits are ordered strictly chronologically descending (newest at the top, oldest at the bottom). Ideal for understanding the exact sequence of real-time developments across all branches.
+Switch seamlessly between two purpose-built visualization paradigms across 4 flow orientations (`↓ Top-to-Bottom`, `↑ Bottom-to-Top`, `→ Left-to-Right`, `← Right-to-Left`):
+- **Timeline View:** Commits are ordered strictly chronologically descending (newest at the top, oldest at the bottom). Ideal for understanding the exact sequence of real-time developments across all branches.
 - **Tree View (Topological DAG):** Commits are structured topologically based on parent-child ancestry relationships using Sugiyama layout algorithms. Ideal for inspecting complex feature branches, merges, and octopus merges.
 
 ### 2. 🌲 The Trunk & Vine Visual Hierarchy
@@ -65,37 +117,11 @@ Click any commit node to display a floating details card:
 - **Metadata:** Author, email, local/relative timestamp, and branch association.
 - **Parent Navigation:** Clickable parent commit chips that instantly pan and center the viewport on parent commits.
 - **Changed Files List & Live Filter:** Filter changed files with an in-card search input; click any file to open VS Code's diff editor.
-- **Quick Action Bar:** One-click Checkout, Branch creation, Revert, and Hard Reset.
+- **Quick Action Bar:** One-click Checkout, Branch creation, Revert, Hard Reset, and Web Link.
 
 ### 7. 🖼️ Standalone Repo Map Export (SVG & PNG)
-- Right-click anywhere on the empty canvas background to export your entire repository history as a high-resolution standalone vector `.svg` or `.png` diagram.
+- Right-click anywhere on the canvas background to export your entire repository history as a high-resolution standalone vector `.svg` or `.png` diagram.
 - SVG exports feature embedded CSS styling, `<clipPath>` containment, and precise font-metric truncation for presentation in browsers, reports, Figma, or documentation.
-
----
-
-## 🔍 Smart Search Syntax & Power Filtering
-
-The search bar supports precision scoping prefixes and multi-attribute queries:
-
-| Syntax / Prefix | Target Scope | Example | Description |
-|---|---|---|---|
-| `@<name>` / `author:<name>` | Author Name & Email | `@renoce` | Highlights only commits authored by users matching `renoce` |
-| `#<branch>` / `branch:<name>` | Branch & Ref Lineage | `#feature/login`, `branch:404` | Highlights all commits belonging to matching branch names |
-| `file:<path>` / `/<path>` | Changed Files & Paths | `file:dag-layout.ts`, `/components` | Highlights commits that modified, added, or deleted matching files |
-| `msg:<text>` / `"phrase"` | Commit Message / Title | `msg:merge`, `"fix token bug"` | Highlights commits matching exact message terms |
-| `is:<type>` / `type:<type>` | Node Type Filter | `is:pr`, `is:issue`, `is:merge`, `is:initial` | Highlights specific node geometries |
-| *(no prefix)* | Universal Fuzzy Search | `refactor` | Searches across subject, author, branch, file, and SHA |
-
-> **Compound Queries:** You can combine multiple search tokens together (e.g. `@renoce is:pr file:dag-layout #main`) to filter complex repository histories instantly.
-
----
-
-## ⌨️ Shortcuts & Commands
-
-| Command | Keybinding (macOS) | Keybinding (Win/Linux) | Location |
-|---|---|---|---|
-| **BetterGitGraph: Open Graph** | <kbd>Cmd</kbd> + <kbd>Ctrl</kbd> + <kbd>G</kbd> | <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>G</kbd> | Editor Title Bar, SCM Bar, Command Palette |
-| **BetterGitGraph: Fetch All Remotes** | — | — | Top Bar Button, SCM Title Bar |
 
 ---
 
@@ -118,7 +144,7 @@ The search bar supports precision scoping prefixes and multi-attribute queries:
 
 ## ⚙️ Configuration & Settings
 
-Configure BetterGitGraph via VS Code Settings (`Cmd+,` / `Ctrl+,` $\rightarrow$ search `BetterGitGraph`):
+Configure BetterGitGraph via VS Code Settings (<kbd>Cmd+,</kbd> / <kbd>Ctrl+,</kbd> $\rightarrow$ search `BetterGitGraph`):
 
 | Setting | Type | Default | Description |
 |---|---|---|---|
