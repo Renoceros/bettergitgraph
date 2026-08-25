@@ -2,7 +2,7 @@
   "name": "bettergitgraph",
   "displayName": "BetterGitGraph",
   "description": "Beautiful, interactive git graph for VS Code — built for everyone.",
-  "version": "1.2.6",
+  "version": "1.3.0",
   "publisher": "Renoceros",
   "repository": {
     "type": "git",
@@ -78,6 +78,11 @@
           "default": true,
           "description": "Enable beginner mode: show plain-English explanations and confirmations for all git operations."
         },
+        "bettergitgraph.twoStageConfirmation": {
+          "type": "boolean",
+          "default": true,
+          "description": "Require a 2nd confirmation dialog before executing irreversible destructive Git actions (Reset Hard, Force Push, Force Delete Branch)."
+        },
         "bettergitgraph.autoFetchInterval": {
           "type": "number",
           "default": 0,
@@ -93,6 +98,20 @@
             "Every 60 minutes"
           ],
           "description": "Interval in minutes for automatically fetching all remotes in the background (0 to disable)."
+        },
+        "bettergitgraph.mainTrunkStrokeWidth": {
+          "type": "number",
+          "default": 7,
+          "minimum": 2,
+          "maximum": 16,
+          "description": "Stroke width (thickness) for the central main/master trunk in pixels."
+        },
+        "bettergitgraph.branchStrokeWidth": {
+          "type": "number",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Stroke width (thickness) for feature and bugfix branches in pixels."
         },
         "bettergitgraph.maxCommits": {
           "type": "number",

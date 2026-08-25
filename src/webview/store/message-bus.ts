@@ -1,10 +1,34 @@
-import type { CommitNode, BranchInfo, ChangedFile, FetchResult, RemoteRepoInfo } from '../../extension/git-data';
+import type {
+  CommitNode,
+  BranchInfo,
+  ChangedFile,
+  FetchResult,
+  RemoteRepoInfo,
+  WorkingTreeStatus,
+  BranchSyncStatus,
+  StashInfo,
+} from '../../extension/git-data';
 import { useAppStore } from './store';
 
 // ─── Message Definitions ───────────────────────────────────────────────────────
 
 export type HostToWebviewMessage =
-  | { type: 'GRAPH_DATA'; payload: { commits: CommitNode[]; branches: BranchInfo[]; remoteInfo?: RemoteRepoInfo | null; autoFetchInterval?: number; repoName?: string } }
+  | {
+      type: 'GRAPH_DATA';
+      payload: {
+        commits: CommitNode[];
+        branches: BranchInfo[];
+        remoteInfo?: RemoteRepoInfo | null;
+        autoFetchInterval?: number;
+        repoName?: string;
+        workingTreeStatus?: WorkingTreeStatus;
+        branchSyncStatus?: Record<string, BranchSyncStatus>;
+        stashes?: StashInfo[];
+        twoStageConfirmation?: boolean;
+        mainTrunkStrokeWidth?: number;
+        branchStrokeWidth?: number;
+      };
+    }
   | { type: 'AUTO_FETCH_INTERVAL_CHANGE'; payload: { interval: number } }
   | { type: 'COMMIT_FILES_RESULT'; payload: { hash: string; files: ChangedFile[] } }
   | { type: 'DIFF_RESULT'; payload: { hash: string; filePath: string; diff: string } }
@@ -20,6 +44,7 @@ export type WebviewToHostMessage =
   | { type: 'REQUEST_DIFF'; payload: { hash: string; filePath: string } }
   | { type: 'OPEN_DIFF'; payload: { hash: string; filePath: string } }
   | { type: 'OPEN_EXTERNAL_URL'; payload: { url: string } }
+  | { type: 'CREATE_PR_ON_WEB'; payload: { branch: string; baseBranch?: string } }
   | { type: 'SET_AUTO_FETCH_INTERVAL'; payload: { interval: number } }
   | { type: 'SEARCH_CHANGED_FILES'; payload: { query: string } }
   | { type: 'FETCH_ALL' }
@@ -77,7 +102,13 @@ class MessageBus {
           message.payload.branches,
           message.payload.remoteInfo,
           message.payload.autoFetchInterval,
-          message.payload.repoName
+          message.payload.repoName,
+          message.payload.workingTreeStatus,
+          message.payload.branchSyncStatus,
+          message.payload.stashes,
+          message.payload.twoStageConfirmation,
+          message.payload.mainTrunkStrokeWidth,
+          message.payload.branchStrokeWidth
         );
         break;
 

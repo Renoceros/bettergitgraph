@@ -48,6 +48,9 @@ export const GraphCanvas: React.FC = () => {
     beginnerMode,
     commitDetail,
     theme,
+    mainTrunkStrokeWidth,
+    branchStrokeWidth,
+    setCommitDrawerOpen,
     setViewport,
     selectCommit,
     setHoveredCommit,
@@ -98,8 +101,10 @@ export const GraphCanvas: React.FC = () => {
       highlightedBranch,
       filteredHashes,
       theme,
+      mainTrunkStrokeWidth,
+      branchStrokeWidth,
     });
-  }, [layout, viewport, selectedHash, hoveredHash, highlightedBranch, filteredHashes, theme]);
+  }, [layout, viewport, selectedHash, hoveredHash, highlightedBranch, filteredHashes, theme, mainTrunkStrokeWidth, branchStrokeWidth]);
 
   // ── Mouse Pan ───────────────────────────────────────────────────────────────
 
@@ -145,7 +150,7 @@ export const GraphCanvas: React.FC = () => {
     const dx = Math.abs(e.clientX - lastMousePosRef.current.x);
     const dy = Math.abs(e.clientY - lastMousePosRef.current.y);
 
-    // Click on node opens popup details card
+    // Click on node opens popup details card or Commit Drawer for WIP
     if (dx < 5 && dy < 5 && rendererRef.current && layout) {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -155,6 +160,13 @@ export const GraphCanvas: React.FC = () => {
 
       const clickedNode = rendererRef.current.hitTest(clickX, clickY, layout, viewport);
       if (clickedNode) {
+        if (clickedNode.isWip || clickedNode.hash === '__WIP__') {
+          setCommitDrawerOpen(true);
+          selectCommit(null);
+          setPopupNodeState(null);
+          return;
+        }
+
         selectCommit(clickedNode.hash);
         setPopupNodeState({
           node: clickedNode,
@@ -205,7 +217,11 @@ export const GraphCanvas: React.FC = () => {
 
   const handleExportSvg = () => {
     if (!layout) return;
-    const svgStr = exportGraphToSvg(layout, { theme: theme === 'light' ? 'light' : 'dark' });
+    const svgStr = exportGraphToSvg(layout, {
+      theme: theme === 'light' ? 'light' : 'dark',
+      mainTrunkStrokeWidth,
+      branchStrokeWidth,
+    });
     downloadSvg(svgStr, 'bettergitgraph-repo-map.svg');
   };
 

@@ -14,8 +14,19 @@ export type GitOperation =
   | { op: 'MERGE'; branch: string; strategy?: 'ff' | 'no-ff' | 'squash' }
   | { op: 'REBASE'; branch: string }
   | { op: 'TAG'; name: string; hash: string; message?: string }
-  | { op: 'PUSH'; branch?: string; remote?: string }
-  | { op: 'PULL'; branch?: string; remote?: string };
+  | { op: 'PUSH'; branch?: string; remote?: string; force?: boolean; confirmed?: boolean }
+  | { op: 'PULL'; branch?: string; remote?: string }
+  | { op: 'STAGE_FILE'; file: string }
+  | { op: 'UNSTAGE_FILE'; file: string }
+  | { op: 'STAGE_ALL' }
+  | { op: 'UNSTAGE_ALL' }
+  | { op: 'DISCARD_FILE'; file: string; confirmed?: boolean }
+  | { op: 'COMMIT'; message: string; push?: boolean }
+  | { op: 'COMMIT_AMEND'; message?: string }
+  | { op: 'STASH_SAVE'; message?: string }
+  | { op: 'STASH_POP'; index: number }
+  | { op: 'STASH_APPLY'; index: number }
+  | { op: 'STASH_DROP'; index: number; confirmed?: boolean };
 
 export interface OperationResult {
   success: boolean;
@@ -221,26 +232,185 @@ export class GitOperationExecutor {
 
         case 'PUSH': {
           const remote = op.remote || 'origin';
-          if (op.branch) {
-            await this.git.push(remote, op.branch);
-          } else {
-            await this.git.push();
+          const args: string[] = [];
+          if (op.force) {
+            if (!op.confirmed) {
+              return {
+                success: false,
+                message: 'Confirmation required for destructive force push.',
+                commandRun: `git push --force-with-lease ${remote} ${op.branch ?? ''}`.trim(),
+                error: 'CONFIRMATION_REQUIRED',
+              };
+            }
+            args.push('--force-with-lease');
           }
+          args.push(remote);
+          if (op.branch) args.push(op.branch);
+
+          await this.git.push(args);
           result = {
             success: true,
-            message: `Pushed changes to ${remote}`,
-            commandRun: `git push ${remote} ${op.branch ?? ''}`.trim(),
+            message: `Pushed changes to ${remote}${op.branch ? ` (${op.branch})` : ''}`,
+            commandRun: `git push ${args.join(' ')}`.trim(),
           };
           break;
         }
 
         case 'PULL': {
           const remote = op.remote || 'origin';
-          await this.git.pull(remote, op.branch);
+          await this.git.pull(remote, op.branch, ['--ff-only']);
           result = {
             success: true,
             message: `Pulled latest changes from ${remote}`,
-            commandRun: `git pull ${remote} ${op.branch ?? ''}`.trim(),
+            commandRun: `git pull ${remote} ${op.branch ?? ''} --ff-only`.trim(),
+          };
+          break;
+        }
+
+        case 'STAGE_FILE': {
+          if (!op.file) throw new Error('File path required for staging.');
+          await this.git.add(op.file);
+          result = {
+            success: true,
+            message: `Staged ${op.file}`,
+            commandRun: `git add ${op.file}`,
+          };
+          break;
+        }
+
+        case 'UNSTAGE_FILE': {
+          if (!op.file) throw new Error('File path required for unstaging.');
+          await this.git.raw(['restore', '--staged', op.file]);
+          result = {
+            success: true,
+            message: `Unstaged ${op.file}`,
+            commandRun: `git restore --staged ${op.file}`,
+          };
+          break;
+        }
+
+        case 'STAGE_ALL': {
+          await this.git.add('-A');
+          result = {
+            success: true,
+            message: 'Staged all working changes',
+            commandRun: 'git add -A',
+          };
+          break;
+        }
+
+        case 'UNSTAGE_ALL': {
+          await this.git.raw(['restore', '--staged', '.']);
+          result = {
+            success: true,
+            message: 'Unstaged all changes',
+            commandRun: 'git restore --staged .',
+          };
+          break;
+        }
+
+        case 'DISCARD_FILE': {
+          if (!op.file) throw new Error('File path required for discarding.');
+          if (!op.confirmed) {
+            return {
+              success: false,
+              message: `Confirmation required to discard changes in ${op.file}.`,
+              commandRun: `git restore ${op.file}`,
+              error: 'CONFIRMATION_REQUIRED',
+            };
+          }
+          try {
+            await this.git.raw(['restore', op.file]);
+          } catch {
+            await this.git.raw(['clean', '-f', op.file]);
+          }
+          result = {
+            success: true,
+            message: `Discarded working changes in ${op.file}`,
+            commandRun: `git restore ${op.file}`,
+          };
+          break;
+        }
+
+        case 'COMMIT': {
+          if (!op.message || !op.message.trim()) {
+            throw new Error('Commit message cannot be empty.');
+          }
+          await this.git.commit(op.message.trim());
+          if (op.push) {
+            await this.git.push();
+          }
+          result = {
+            success: true,
+            message: op.push ? 'Committed and pushed changes' : 'Committed working changes',
+            commandRun: `git commit -m "${op.message.trim()}"${op.push ? ' && git push' : ''}`,
+          };
+          break;
+        }
+
+        case 'COMMIT_AMEND': {
+          const args = ['commit', '--amend', '--no-edit'];
+          if (op.message && op.message.trim()) {
+            args.length = 0;
+            args.push('commit', '--amend', '-m', op.message.trim());
+          }
+          await this.git.raw(args);
+          result = {
+            success: true,
+            message: 'Amended previous commit',
+            commandRun: `git ${args.join(' ')}`,
+          };
+          break;
+        }
+
+        case 'STASH_SAVE': {
+          const msg = op.message ? ['push', '-m', op.message] : ['push'];
+          await this.git.stash(msg);
+          result = {
+            success: true,
+            message: op.message ? `Saved stash: ${op.message}` : 'Saved working changes to stash',
+            commandRun: `git stash ${msg.join(' ')}`,
+          };
+          break;
+        }
+
+        case 'STASH_POP': {
+          const stashRef = `stash@{${op.index}}`;
+          await this.git.stash(['pop', stashRef]);
+          result = {
+            success: true,
+            message: `Popped stash ${stashRef}`,
+            commandRun: `git stash pop ${stashRef}`,
+          };
+          break;
+        }
+
+        case 'STASH_APPLY': {
+          const stashRef = `stash@{${op.index}}`;
+          await this.git.stash(['apply', stashRef]);
+          result = {
+            success: true,
+            message: `Applied stash ${stashRef}`,
+            commandRun: `git stash apply ${stashRef}`,
+          };
+          break;
+        }
+
+        case 'STASH_DROP': {
+          const stashRef = `stash@{${op.index}}`;
+          if (!op.confirmed) {
+            return {
+              success: false,
+              message: `Confirmation required to drop ${stashRef}.`,
+              commandRun: `git stash drop ${stashRef}`,
+              error: 'CONFIRMATION_REQUIRED',
+            };
+          }
+          await this.git.stash(['drop', stashRef]);
+          result = {
+            success: true,
+            message: `Dropped stash ${stashRef}`,
+            commandRun: `git stash drop ${stashRef}`,
           };
           break;
         }

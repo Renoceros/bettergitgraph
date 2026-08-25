@@ -177,3 +177,21 @@ export const IconGlobe: React.FC<IconProps> = ({ size = 14, color = 'currentColo
     />
   </svg>
 );
+
+export const IconSync: React.FC<IconProps> = ({ size = 14, color = 'currentColor', style }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" style={{ display: 'inline-block', verticalAlign: 'middle', ...style }}>
+    <path
+      d="M13.65 2.35A7.958 7.958 0 0 0 8 0C3.58 0 .01 3.58.01 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 8 14c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L9 7h7V0l-2.35 2.35z"
+      fill={color}
+    />
+  </svg>
+);
+
+export const IconCloudUpload: React.FC<IconProps> = ({ size = 14, color = 'currentColor', style }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" style={{ display: 'inline-block', verticalAlign: 'middle', ...style }}>
+    <path
+      d="M12.5 6.5C12.1 4.5 10.3 3 8 3C6.1 3 4.5 4.1 3.8 5.7C1.6 6.1 0 8.1 0 10.5C0 13 2 15 4.5 15H12C14.2 15 16 13.2 16 11C16 8.9 14.4 7.1 12.5 6.5ZM8 7.5L11.5 11H9V14H7V11H4.5L8 7.5Z"
+      fill={color}
+    />
+  </svg>
+);

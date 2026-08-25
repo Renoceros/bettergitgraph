@@ -1,5 +1,14 @@
 import { create } from 'zustand';
-import type { CommitNode, BranchInfo, ChangedFile, FetchResult, RemoteRepoInfo } from '../../extension/git-data';
+import type {
+  CommitNode,
+  BranchInfo,
+  ChangedFile,
+  FetchResult,
+  RemoteRepoInfo,
+  WorkingTreeStatus,
+  BranchSyncStatus,
+  StashInfo,
+} from '../../extension/git-data';
 import type { GraphLayout, LayoutDirection, DateFormat } from '../components/GraphCanvas/dag-layout';
 import { DAGLayoutEngine } from '../components/GraphCanvas/dag-layout';
 import { BranchColorEngine } from '../../extension/color-engine';
@@ -37,6 +46,12 @@ export interface AppState {
   // Selected commit details
   commitDetail: CommitFileDetail | null;
 
+  // Working tree & sync
+  workingTreeStatus: WorkingTreeStatus | null;
+  branchSyncStatus: Record<string, BranchSyncStatus>;
+  stashes: StashInfo[];
+  isCommitDrawerOpen: boolean;
+
   // Search & Filter
   searchQuery: string;
   filteredHashes: Set<string> | null;
@@ -49,6 +64,9 @@ export interface AppState {
   dateFormat: DateFormat;
   autoFetchInterval: number; // 0 = off, minutes
   beginnerMode: boolean;
+  twoStageConfirmation: boolean;
+  mainTrunkStrokeWidth: number;
+  branchStrokeWidth: number;
   nodeRadius: number;
   theme: 'dark' | 'light' | 'high-contrast';
   viewport: Viewport;
@@ -56,11 +74,24 @@ export interface AppState {
   lastFetchResult: FetchResult | null;
 
   // Actions
-  setGraphData: (commits: CommitNode[], branches: BranchInfo[], remoteInfo?: RemoteRepoInfo | null, autoFetchInterval?: number, repoName?: string) => void;
+  setGraphData: (
+    commits: CommitNode[],
+    branches: BranchInfo[],
+    remoteInfo?: RemoteRepoInfo | null,
+    autoFetchInterval?: number,
+    repoName?: string,
+    workingTreeStatus?: WorkingTreeStatus,
+    branchSyncStatus?: Record<string, BranchSyncStatus>,
+    stashes?: StashInfo[],
+    twoStageConfirmation?: boolean,
+    mainTrunkStrokeWidth?: number,
+    branchStrokeWidth?: number
+  ) => void;
   selectCommit: (hash: string | null) => void;
   setHoveredCommit: (hash: string | null) => void;
   setHighlightedBranch: (branch: string | null) => void;
   setCommitDetail: (detail: Partial<CommitFileDetail>) => void;
+  setCommitDrawerOpen: (open: boolean) => void;
   setSearchQuery: (query: string) => void;
   addFileSearchMatches: (query: string, hashes: string[]) => void;
   setAuthorFilter: (authors: string[]) => void;
@@ -83,6 +114,20 @@ export interface AppState {
   openBranchOnWeb: (branch: string) => void;
   openPrOnWeb: (prNumber: number) => void;
   openIssueOnWeb: (issueNumber: number) => void;
+  openPrCreateOnWeb: (branch: string, baseBranch?: string) => void;
+  stageFile: (file: string) => void;
+  unstageFile: (file: string) => void;
+  stageAll: () => void;
+  unstageAll: () => void;
+  discardFile: (file: string, confirmed?: boolean) => void;
+  commitChanges: (message: string, push?: boolean) => void;
+  commitAmend: (message?: string) => void;
+  pushBranch: (branch?: string, force?: boolean, confirmed?: boolean) => void;
+  pullBranch: (branch?: string) => void;
+  saveStash: (message?: string) => void;
+  popStash: (index: number) => void;
+  applyStash: (index: number) => void;
+  dropStash: (index: number, confirmed?: boolean) => void;
 }
 
 // ─── Color & Layout Singletons ────────────────────────────────────────────────
@@ -103,6 +148,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   hoveredHash: null,
   highlightedBranch: null,
   commitDetail: null,
+  workingTreeStatus: null,
+  branchSyncStatus: {},
+  stashes: [],
+  isCommitDrawerOpen: false,
   searchQuery: '',
   filteredHashes: null,
   authorFilter: [],
@@ -112,13 +161,28 @@ export const useAppStore = create<AppState>((set, get) => ({
   dateFormat: 'local',
   autoFetchInterval: 0,
   beginnerMode: true,
+  twoStageConfirmation: true,
+  mainTrunkStrokeWidth: 7,
+  branchStrokeWidth: 3,
   nodeRadius: 8,
   theme: 'dark',
   viewport: { x: 50, y: 50, zoom: 1.0, width: 800, height: 600 },
   isFetching: false,
   lastFetchResult: null,
 
-  setGraphData: (commits, branches, remoteInfo, autoFetchInterval, repoName) => {
+  setGraphData: (
+    commits,
+    branches,
+    remoteInfo,
+    autoFetchInterval,
+    repoName,
+    workingTreeStatus,
+    branchSyncStatus,
+    stashes,
+    twoStageConfirmation,
+    mainTrunkStrokeWidth,
+    branchStrokeWidth
+  ) => {
     const { layoutDirection, viewMode, dateFormat, nodeRadius, theme } = get();
     colorEngine.setTheme(theme);
     const branchNames = branches.map((b) => b.name);
@@ -129,6 +193,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       viewMode,
       dateFormat,
       nodeRadius,
+      workingTreeStatus: workingTreeStatus ?? get().workingTreeStatus ?? undefined,
     });
 
     set({
@@ -138,6 +203,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       ...(remoteInfo !== undefined ? { remoteInfo } : {}),
       ...(autoFetchInterval !== undefined ? { autoFetchInterval } : {}),
       ...(repoName ? { repoName } : {}),
+      ...(workingTreeStatus !== undefined ? { workingTreeStatus } : {}),
+      ...(branchSyncStatus !== undefined ? { branchSyncStatus } : {}),
+      ...(stashes !== undefined ? { stashes } : {}),
+      ...(twoStageConfirmation !== undefined ? { twoStageConfirmation } : {}),
+      ...(mainTrunkStrokeWidth !== undefined ? { mainTrunkStrokeWidth } : {}),
+      ...(branchStrokeWidth !== undefined ? { branchStrokeWidth } : {}),
     });
     if (get().searchQuery) {
       get().setSearchQuery(get().searchQuery);
@@ -145,7 +216,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   recomputeLayout: () => {
-    const { commits, branches, layoutDirection, viewMode, dateFormat, nodeRadius, theme } = get();
+    const {
+      commits,
+      branches,
+      layoutDirection,
+      viewMode,
+      dateFormat,
+      nodeRadius,
+      theme,
+      workingTreeStatus,
+    } = get();
     colorEngine.setTheme(theme);
     const branchNames = branches.map((b) => b.name);
     const colorMap = colorEngine.getAllColors(branchNames);
@@ -155,6 +235,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       viewMode,
       dateFormat,
       nodeRadius,
+      workingTreeStatus: workingTreeStatus ?? undefined,
     });
 
     set({ layout });
@@ -541,5 +622,63 @@ export const useAppStore = create<AppState>((set, get) => ({
       ? `${remoteInfo.webUrl}/-/issues/${issueNumber}`
       : `${remoteInfo.webUrl}/issues/${issueNumber}`;
     get().openExternalUrl(url);
+  },
+
+  openPrCreateOnWeb: (branch: string, baseBranch?: string) => {
+    messageBus.send({ type: 'CREATE_PR_ON_WEB', payload: { branch, baseBranch } });
+  },
+
+  setCommitDrawerOpen: (open: boolean) => set({ isCommitDrawerOpen: open }),
+
+  stageFile: (file: string) => {
+    messageBus.send({ type: 'EXECUTE_OPERATION', payload: { op: 'STAGE_FILE', file } });
+  },
+
+  unstageFile: (file: string) => {
+    messageBus.send({ type: 'EXECUTE_OPERATION', payload: { op: 'UNSTAGE_FILE', file } });
+  },
+
+  stageAll: () => {
+    messageBus.send({ type: 'EXECUTE_OPERATION', payload: { op: 'STAGE_ALL' } });
+  },
+
+  unstageAll: () => {
+    messageBus.send({ type: 'EXECUTE_OPERATION', payload: { op: 'UNSTAGE_ALL' } });
+  },
+
+  discardFile: (file: string, confirmed?: boolean) => {
+    messageBus.send({ type: 'EXECUTE_OPERATION', payload: { op: 'DISCARD_FILE', file, confirmed } });
+  },
+
+  commitChanges: (message: string, push?: boolean) => {
+    messageBus.send({ type: 'EXECUTE_OPERATION', payload: { op: 'COMMIT', message, push } });
+  },
+
+  commitAmend: (message?: string) => {
+    messageBus.send({ type: 'EXECUTE_OPERATION', payload: { op: 'COMMIT_AMEND', message } });
+  },
+
+  pushBranch: (branch?: string, force?: boolean, confirmed?: boolean) => {
+    messageBus.send({ type: 'EXECUTE_OPERATION', payload: { op: 'PUSH', branch, force, confirmed } });
+  },
+
+  pullBranch: (branch?: string) => {
+    messageBus.send({ type: 'EXECUTE_OPERATION', payload: { op: 'PULL', branch } });
+  },
+
+  saveStash: (message?: string) => {
+    messageBus.send({ type: 'EXECUTE_OPERATION', payload: { op: 'STASH_SAVE', message } });
+  },
+
+  popStash: (index: number) => {
+    messageBus.send({ type: 'EXECUTE_OPERATION', payload: { op: 'STASH_POP', index } });
+  },
+
+  applyStash: (index: number) => {
+    messageBus.send({ type: 'EXECUTE_OPERATION', payload: { op: 'STASH_APPLY', index } });
+  },
+
+  dropStash: (index: number, confirmed?: boolean) => {
+    messageBus.send({ type: 'EXECUTE_OPERATION', payload: { op: 'STASH_DROP', index, confirmed } });
   },
 }));

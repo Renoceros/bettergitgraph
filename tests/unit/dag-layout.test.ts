@@ -130,19 +130,50 @@ describe('DAGLayoutEngine', () => {
     expect(localStr).toContain('GMT');
   });
 
-  it('exports graph to valid standalone SVG XML', () => {
+  it('exports graph to valid standalone SVG XML with custom stroke widths', () => {
     const commits: CommitNode[] = [
       { hash: 'c2', shortHash: 'c2', subject: 'second commit', author: 'Dev', authorEmail: 'dev@test.com', date: new Date(), parents: ['c1'], refs: ['HEAD -> main'] },
       { hash: 'c1', shortHash: 'c1', subject: 'initial commit', author: 'Dev', authorEmail: 'dev@test.com', date: new Date(), parents: [], refs: [] },
     ];
 
     const layout = engine.layout(commits);
-    const svg = exportGraphToSvg(layout);
+    const svg = exportGraphToSvg(layout, { mainTrunkStrokeWidth: 8, branchStrokeWidth: 4 });
 
     expect(svg).toContain('<?xml version="1.0"');
     expect(svg).toContain('<svg xmlns="http://www.w3.org/2000/svg"');
     expect(svg).toContain('INITIAL');
     expect(svg).toContain('second commit');
+    expect(svg).toContain('stroke-width="8"');
     expect(svg).toContain('</svg>');
+  });
+
+  it('injects synthetic WIP node when workingTreeStatus is dirty', () => {
+    const commits: CommitNode[] = [
+      { hash: 'c1', shortHash: 'c1', subject: 'root commit', author: 'Dev', authorEmail: 'dev@test.com', date: new Date(), parents: [], refs: ['HEAD -> main'] },
+    ];
+    const branches: BranchInfo[] = [
+      { name: 'main', isHead: true, isRemote: false, headHash: 'c1', aheadCount: 2, behindCount: 1 },
+    ];
+
+    const layout = engine.layout(commits, branches, new Map(), {
+      workingTreeStatus: {
+        isDirty: true,
+        staged: [{ path: 'src/index.ts', status: 'M' }],
+        unstaged: [{ path: 'README.md', status: 'M' }],
+        untracked: [],
+        conflicted: [],
+      },
+    });
+
+    expect(layout.nodes.length).toBe(2);
+    const wipNode = layout.nodes.find((n) => n.isWip);
+    expect(wipNode).toBeDefined();
+    expect(wipNode?.nodeType).toBe('wip');
+    expect(wipNode?.wipStagedCount).toBe(1);
+    expect(wipNode?.wipUnstagedCount).toBe(1);
+
+    const mainNode = layout.nodeMap.get('c1')!;
+    expect(mainNode.aheadCount).toBe(2);
+    expect(mainNode.behindCount).toBe(1);
   });
 });

@@ -35,7 +35,13 @@ export const NodePopup: React.FC<NodePopupProps> = ({
   onExecuteOperation,
   onClose,
 }) => {
-  const { remoteInfo, openCommitOnWeb, openPrOnWeb, openIssueOnWeb } = useAppStore();
+  const {
+    remoteInfo,
+    openCommitOnWeb,
+    openPrOnWeb,
+    openIssueOnWeb,
+    openPrCreateOnWeb,
+  } = useAppStore();
   const [copied, setCopied] = useState(false);
 
   const handleCopyHash = () => {
@@ -289,36 +295,54 @@ export const NodePopup: React.FC<NodePopupProps> = ({
             <span>Reset Hard</span>
           </button>
           {remoteInfo && (
-            <button
-              onClick={() => {
-                if (node.nodeType === 'pr' && node.prNumber) {
-                  openPrOnWeb(node.prNumber);
-                } else if (node.nodeType === 'issue' && node.issueNumber) {
-                  openIssueOnWeb(node.issueNumber);
-                } else {
-                  openCommitOnWeb(node.hash);
-                }
-              }}
-              title="Open in web browser"
-              style={{
-                ...actionBtnStyle,
-                color: '#4ec9b0',
-                borderColor: '#4ec9b0',
-                backgroundColor: 'rgba(78, 201, 176, 0.1)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-              }}
-            >
-              <IconExternalLink size={12} color="#4ec9b0" />
-              <span>
-                {node.nodeType === 'pr' && node.prNumber
-                  ? `PR #${node.prNumber}`
-                  : node.nodeType === 'issue' && node.issueNumber
-                  ? `Issue #${node.issueNumber}`
-                  : `Open on Web`}
-              </span>
-            </button>
+            <>
+              <button
+                onClick={() => openPrCreateOnWeb(node.branchName)}
+                title={`Raise PR for ${node.branchName}`}
+                style={{
+                  ...actionBtnStyle,
+                  color: '#4ec9b0',
+                  borderColor: '#4ec9b0',
+                  backgroundColor: 'rgba(78, 201, 176, 0.12)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                }}
+              >
+                <IconExternalLink size={12} color="#4ec9b0" />
+                <span>Raise PR</span>
+              </button>
+              <button
+                onClick={() => {
+                  if (node.nodeType === 'pr' && node.prNumber) {
+                    openPrOnWeb(node.prNumber);
+                  } else if (node.nodeType === 'issue' && node.issueNumber) {
+                    openIssueOnWeb(node.issueNumber);
+                  } else {
+                    openCommitOnWeb(node.hash);
+                  }
+                }}
+                title="Open in web browser"
+                style={{
+                  ...actionBtnStyle,
+                  color: '#569cd6',
+                  borderColor: '#569cd6',
+                  backgroundColor: 'rgba(86, 156, 214, 0.1)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                }}
+              >
+                <IconExternalLink size={12} color="#569cd6" />
+                <span>
+                  {node.nodeType === 'pr' && node.prNumber
+                    ? `PR #${node.prNumber}`
+                    : node.nodeType === 'issue' && node.issueNumber
+                    ? `Issue #${node.issueNumber}`
+                    : `Open on Web`}
+                </span>
+              </button>
+            </>
           )}
         </div>
       </div>

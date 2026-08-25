@@ -1,5 +1,5 @@
 import dagre from '@dagrejs/dagre';
-import type { CommitNode, BranchInfo } from '../../../extension/git-data';
+import type { CommitNode, BranchInfo, WorkingTreeStatus } from '../../../extension/git-data';
 
 // ─── Public Layout Types ───────────────────────────────────────────────────────
 
@@ -10,7 +10,8 @@ export type CommitNodeType =
   | 'octopus'  // 3+ parent octopus merge
   | 'stash'    // Stash commit
   | 'pr'       // Pull Request / Merge Request node
-  | 'issue';   // Issue closing / referencing node
+  | 'issue'    // Issue closing / referencing node
+  | 'wip';     // Working Tree (uncommitted changes) node
 
 export type LayoutDirection = 'TB' | 'BT' | 'LR' | 'RL';
 export type DateFormat = 'local' | 'relative' | 'iso';
@@ -38,6 +39,11 @@ export interface LayoutNode {
   nodeType: CommitNodeType;
   prNumber?: number;
   issueNumber?: number;
+  isWip?: boolean;
+  wipStagedCount?: number;
+  wipUnstagedCount?: number;
+  aheadCount?: number;
+  behindCount?: number;
   branchName: string;
   branchColor: string;
   isHead: boolean;
@@ -78,6 +84,7 @@ export interface LayoutOptions {
   nodeSpacingX?: number;
   nodeSpacingY?: number;
   padding?: number;
+  workingTreeStatus?: WorkingTreeStatus;
 }
 
 // ─── Date Formatting Helper ───────────────────────────────────────────────────
@@ -131,7 +138,7 @@ export function formatCommitDate(date: Date, format: DateFormat = 'local'): stri
 }
 
 /**
- * Classifies a commit into its visual node type (initial, merge, octopus, pr, issue, stash, commit)
+ * Classifies a commit into its visual node type (initial, merge, octopus, pr, issue, stash, wip, commit)
  * and extracts associated PR / Issue numbers if present.
  */
 export function classifyCommitNode(commit: CommitNode): {
@@ -139,6 +146,10 @@ export function classifyCommitNode(commit: CommitNode): {
   prNumber?: number;
   issueNumber?: number;
 } {
+  if (commit.hash === '__WIP__') {
+    return { nodeType: 'wip' };
+  }
+
   // 1. Pull Request patterns
   const prMatch =
     /Merge pull request #(\d+)/i.exec(commit.subject) ??
@@ -185,6 +196,7 @@ export class DAGLayoutEngine {
     nodeSpacingX: 64,
     nodeSpacingY: 60,
     padding: 40,
+    workingTreeStatus: { isDirty: false, staged: [], unstaged: [], untracked: [], conflicted: [] },
   };
 
   /**
@@ -218,13 +230,31 @@ export class DAGLayoutEngine {
     const headBranch = branches.find((b) => b.isHead);
     const headCommitHash = headBranch?.headHash;
 
-    const commitBranchMap = this.assignCommitBranches(commits, branches, mainBranchName);
-
-    if (opts.viewMode === 'temporal') {
-      return this.layoutTemporal(commits, branches, commitBranchMap, colorMap, mainBranchName, headCommitHash, opts);
+    let layoutCommits = commits;
+    if (opts.workingTreeStatus?.isDirty) {
+      const targetHeadHash = headCommitHash || commits[0]?.hash;
+      const stagedCount = opts.workingTreeStatus.staged.length;
+      const unstagedCount = opts.workingTreeStatus.unstaged.length + opts.workingTreeStatus.untracked.length;
+      const wipCommit: CommitNode = {
+        hash: '__WIP__',
+        shortHash: 'WIP',
+        subject: `Uncommitted Changes (${stagedCount} staged, ${unstagedCount} unstaged)`,
+        author: 'Working Directory',
+        authorEmail: '',
+        date: new Date(Date.now() + 60000), // ensure chronologically at very top
+        parents: targetHeadHash ? [targetHeadHash] : [],
+        refs: ['Working Tree'],
+      };
+      layoutCommits = [wipCommit, ...commits];
     }
 
-    return this.layoutTopo(commits, branches, commitBranchMap, colorMap, mainBranchName, headCommitHash, opts);
+    const commitBranchMap = this.assignCommitBranches(layoutCommits, branches, mainBranchName);
+
+    if (opts.viewMode === 'temporal') {
+      return this.layoutTemporal(layoutCommits, branches, commitBranchMap, colorMap, mainBranchName, headCommitHash, opts);
+    }
+
+    return this.layoutTopo(layoutCommits, branches, commitBranchMap, colorMap, mainBranchName, headCommitHash, opts);
   }
 
   /**
@@ -320,6 +350,11 @@ export class DAGLayoutEngine {
       maxX = Math.max(maxX, x + opts.nodeRadius, plaque.x + plaque.width);
       maxY = Math.max(maxY, y + opts.nodeRadius, plaque.y + plaque.height);
 
+      const isWip = commit.hash === '__WIP__';
+      const branchObj = branches.find((b) => b.headHash === commit.hash);
+      const aheadCount = branchObj?.aheadCount;
+      const behindCount = branchObj?.behindCount;
+
       const layoutNode: LayoutNode = {
         hash: commit.hash,
         shortHash: commit.shortHash || commit.hash.slice(0, 8),
@@ -331,13 +366,18 @@ export class DAGLayoutEngine {
         formattedDate: formatCommitDate(commit.date, opts.dateFormat),
         x,
         y,
-        radius: isMainBranch ? opts.nodeRadius + 1 : opts.nodeRadius,
+        radius: isWip || isMainBranch ? opts.nodeRadius + 1 : opts.nodeRadius,
         nodeType: classification.nodeType,
         prNumber: classification.prNumber,
         issueNumber: classification.issueNumber,
+        isWip,
+        wipStagedCount: isWip ? opts.workingTreeStatus?.staged.length : undefined,
+        wipUnstagedCount: isWip ? (opts.workingTreeStatus?.unstaged.length ?? 0) + (opts.workingTreeStatus?.untracked.length ?? 0) : undefined,
+        aheadCount,
+        behindCount,
         branchName,
-        branchColor,
-        isHead,
+        branchColor: isWip ? '#4ec9b0' : branchColor,
+        isHead: isWip ? true : isHead,
         isMerge,
         isMainBranch,
         refs: commit.refs,
@@ -472,6 +512,11 @@ export class DAGLayoutEngine {
       maxX = Math.max(maxX, x + opts.nodeRadius, plaque.x + plaque.width);
       maxY = Math.max(maxY, y + opts.nodeRadius, plaque.y + plaque.height);
 
+      const isWip = commit.hash === '__WIP__';
+      const branchObj = branches.find((b) => b.headHash === commit.hash);
+      const aheadCount = branchObj?.aheadCount;
+      const behindCount = branchObj?.behindCount;
+
       const layoutNode: LayoutNode = {
         hash: commit.hash,
         shortHash: commit.shortHash || commit.hash.slice(0, 8),
@@ -483,13 +528,18 @@ export class DAGLayoutEngine {
         formattedDate: formatCommitDate(commit.date, opts.dateFormat),
         x,
         y,
-        radius: isMainBranch ? opts.nodeRadius + 1 : opts.nodeRadius,
+        radius: isWip || isMainBranch ? opts.nodeRadius + 1 : opts.nodeRadius,
         nodeType: classification.nodeType,
         prNumber: classification.prNumber,
         issueNumber: classification.issueNumber,
+        isWip,
+        wipStagedCount: isWip ? opts.workingTreeStatus?.staged.length : undefined,
+        wipUnstagedCount: isWip ? (opts.workingTreeStatus?.unstaged.length ?? 0) + (opts.workingTreeStatus?.untracked.length ?? 0) : undefined,
+        aheadCount,
+        behindCount,
         branchName,
-        branchColor,
-        isHead,
+        branchColor: isWip ? '#4ec9b0' : branchColor,
+        isHead: isWip ? true : isHead,
         isMerge,
         isMainBranch,
         refs: commit.refs,

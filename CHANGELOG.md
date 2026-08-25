@@ -5,6 +5,24 @@ All notable changes to BetterGitGraph will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-08-25
+
+### Added
+- **Working Tree (WIP) Node & Commit Studio Drawer**:
+  - Attached glowing dashed node $\bigodot$ above `HEAD` whenever working directory or staging area has changes.
+  - Slide-out Commit Drawer for interactive file staging (`git add` / `git restore --staged`), inline VS Code diff inspection, Conventional Commit chips, and one-click `Commit`, `Commit & Push`, and `Amend`.
+- **Two-Stage Destructive Confirmation Guardrail ("Double Confirmation")**:
+  - Enforced 2-stage verification dialogs for high-risk irreversible Git actions (`Reset Hard`, `Force Push`, `Force Delete Branch`, `Discard Changes`, `Drop Stash`).
+  - Toggleable in VS Code settings via `bettergitgraph.twoStageConfirmation` (`boolean`, default: `true`).
+- **One-Click "Raise PR / Create MR"**:
+  - Instant PR deep linking on branch nodes and context menus for GitHub, GitLab, Bitbucket, and Azure DevOps with base and head branches pre-selected.
+- **Remote Divergence Sync Radar**:
+  - Live `↑N ↓M` ahead/behind divergence pills rendered directly on branch plaques.
+- **Customizable Curve & Trunk Stroke Thicknesses**:
+  - Configurable central trunk thickness `bettergitgraph.mainTrunkStrokeWidth` (default: `7px`) for prominent visual separation from feature branches.
+  - Configurable branch thickness `bettergitgraph.branchStrokeWidth` (default: `3px`).
+  - Real-time SVG & PNG exports reflecting custom curve thicknesses.
+
 ## [1.2.6] - 2026-08-24
 
 ### Added

@@ -12,6 +12,7 @@ import {
   IconDanger,
   IconCopy,
   IconExternalLink,
+  IconSync,
 } from '../Icons/Icons';
 
 export interface ContextMenuProps {
@@ -31,7 +32,14 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onSelectOperation,
   onClose,
 }) => {
-  const { remoteInfo, openCommitOnWeb, openBranchOnWeb, openPrOnWeb, openIssueOnWeb } = useAppStore();
+  const {
+    remoteInfo,
+    openCommitOnWeb,
+    openBranchOnWeb,
+    openPrOnWeb,
+    openIssueOnWeb,
+    openPrCreateOnWeb,
+  } = useAppStore();
   const providerName =
     remoteInfo?.provider === 'github'
       ? 'GitHub'
@@ -197,6 +205,25 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
       {remoteInfo && (
         <>
+          <MenuItem
+            icon={<IconExternalLink size={14} color="#4ec9b0" />}
+            title={`Raise PR / Create MR (${node.branchName})`}
+            beginnerSubtitle={`Create a Pull Request on ${providerName}`}
+            gitCommand={`Create PR: ${node.branchName} → main`}
+            beginnerMode={beginnerMode}
+            onClick={() => {
+              openPrCreateOnWeb(node.branchName);
+              onClose();
+            }}
+          />
+          <MenuItem
+            icon={<IconSync size={14} color="#569cd6" />}
+            title="Sync (Pull & Push)"
+            beginnerSubtitle="Fetch changes and push current branch"
+            gitCommand="git pull && git push"
+            beginnerMode={beginnerMode}
+            onClick={() => handleAction({ op: 'SYNC' }, false)}
+          />
           <MenuItem
             icon={<IconExternalLink size={14} color="#4ec9b0" />}
             title={

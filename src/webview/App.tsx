@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { SearchBar } from './components/SearchBar/SearchBar';
 import { GraphCanvas } from './components/GraphCanvas/GraphCanvas';
 import { CommitDetail } from './components/CommitDetail/CommitDetail';
+import { CommitDrawer } from './components/CommitDrawer/CommitDrawer';
 import { messageBus } from './store/message-bus';
 
 export const App: React.FC = () => {
@@ -38,6 +39,7 @@ export const App: React.FC = () => {
         </div>
         <CommitDetail />
       </div>
+      <CommitDrawer />
     </div>
   );
 };

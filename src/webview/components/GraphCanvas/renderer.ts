@@ -7,6 +7,8 @@ export interface RenderOptions {
   highlightedBranch: string | null;
   filteredHashes: Set<string> | null;
   theme: 'dark' | 'light' | 'high-contrast';
+  mainTrunkStrokeWidth?: number;
+  branchStrokeWidth?: number;
 }
 
 export class CanvasRenderer {
@@ -50,20 +52,16 @@ export class CanvasRenderer {
     const visibleMinY = -viewport.y / viewport.zoom - 100;
     const visibleMaxY = (-viewport.y + viewport.height) / viewport.zoom + 100;
 
-    // 1. Draw Edges
+    // Draw graph components in back-to-front layer order
     this.drawEdges(layout.edges, visibleMinX, visibleMaxX, visibleMinY, visibleMaxY, options);
-
-    // 2. Draw Plaques (Tag Cards)
     this.drawPlaques(layout.nodes, visibleMinX, visibleMaxX, visibleMinY, visibleMaxY, options, viewport.zoom);
-
-    // 3. Draw Nodes
     this.drawNodes(layout.nodes, visibleMinX, visibleMaxX, visibleMinY, visibleMaxY, options);
 
     ctx.restore();
   }
 
   /**
-   * Hit test a screen coordinate (pixels) to find the hovered/clicked commit node or plaque.
+   * Hit-testing method to find which node (or plaque) is at a given canvas coordinate (x, y).
    */
   hitTest(
     screenX: number,
@@ -73,33 +71,33 @@ export class CanvasRenderer {
   ): LayoutNode | null {
     if (!layout || layout.nodes.length === 0) return null;
 
+    // Transform screen canvas coordinates to graph coordinates
     const graphX = (screenX - viewport.x) / viewport.zoom;
     const graphY = (screenY - viewport.y) / viewport.zoom;
 
-    const HIT_RADIUS = 18;
-    const hitRadiusSq = HIT_RADIUS * HIT_RADIUS;
-
-    for (let i = layout.nodes.length - 1; i >= 0; i--) {
-      const node = layout.nodes[i];
-      if (!node) continue;
-
-      // 1. Test Node Circle
+    // Check nodes first (higher priority than plaques)
+    for (const node of layout.nodes) {
       const dx = graphX - node.x;
       const dy = graphY - node.y;
-      if (dx * dx + dy * dy <= hitRadiusSq) {
+      const hitRadius = Math.max(node.radius + 6, 14);
+      if (dx * dx + dy * dy <= hitRadius * hitRadius) {
         return node;
       }
+    }
 
-      // 2. Test Plaque Bounding Box
-      const { plaque } = node;
-      if (
-        plaque &&
-        graphX >= plaque.x &&
-        graphX <= plaque.x + plaque.width &&
-        graphY >= plaque.y &&
-        graphY <= plaque.y + plaque.height
-      ) {
-        return node;
+    // Check plaques if zoomed in enough
+    if (viewport.zoom >= 0.35) {
+      for (const node of layout.nodes) {
+        const { plaque } = node;
+        if (!plaque) continue;
+        if (
+          graphX >= plaque.x &&
+          graphX <= plaque.x + plaque.width &&
+          graphY >= plaque.y &&
+          graphY <= plaque.y + plaque.height
+        ) {
+          return node;
+        }
       }
     }
 
@@ -115,6 +113,8 @@ export class CanvasRenderer {
     options: RenderOptions
   ): void {
     const { ctx } = this;
+    const mainWidth = options.mainTrunkStrokeWidth ?? 7.0;
+    const branchWidth = options.branchStrokeWidth ?? 3.0;
 
     for (const edge of edges) {
       if (edge.points.length < 2) continue;
@@ -138,7 +138,7 @@ export class CanvasRenderer {
       ctx.save();
       ctx.beginPath();
       ctx.strokeStyle = isDimmed ? 'rgba(128, 128, 128, 0.2)' : edge.color;
-      ctx.lineWidth = edge.isMainEdge ? 5.0 : 2.5;
+      ctx.lineWidth = edge.isMainEdge ? mainWidth : branchWidth;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
@@ -239,30 +239,56 @@ export class CanvasRenderer {
       ctx.lineWidth = isSelected || isMatched ? 1.8 : 1;
       ctx.stroke();
 
-      // 3. Draw Type Badge Pill
+      // 3. Draw Type Badge Pill & Sync Badges
       const typeLabel = this.getNodeTypeBadgeLabel(node.nodeType, node);
       const typeBgColor = this.getNodeTypeBadgeBg(node.nodeType, isDark);
       const typeTextColor = this.getNodeTypeBadgeTextColor(node.nodeType, isDark);
 
       ctx.font = 'bold 9px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
       const typeWidth = ctx.measureText(typeLabel).width + 10;
-      const badgeX = plaque.x + 8;
+      let curX = plaque.x + 8;
       const badgeY = plaque.y + 6;
 
       ctx.beginPath();
-      ctx.roundRect(badgeX, badgeY, typeWidth, 16, 3);
+      ctx.roundRect(curX, badgeY, typeWidth, 16, 3);
       ctx.fillStyle = typeBgColor;
       ctx.fill();
       ctx.fillStyle = typeTextColor;
       ctx.textBaseline = 'middle';
-      ctx.fillText(typeLabel, badgeX + 5, badgeY + 8);
+      ctx.fillText(typeLabel, curX + 5, badgeY + 8);
+      curX += typeWidth + 4;
+
+      // Draw Ahead / Behind Sync Badges if present
+      if (node.aheadCount && node.aheadCount > 0) {
+        const aheadText = `↑${node.aheadCount}`;
+        const aheadWidth = ctx.measureText(aheadText).width + 8;
+        ctx.beginPath();
+        ctx.roundRect(curX, badgeY, aheadWidth, 16, 3);
+        ctx.fillStyle = isDark ? '#064e3b' : '#d1fae5';
+        ctx.fill();
+        ctx.fillStyle = isDark ? '#34d399' : '#047857';
+        ctx.fillText(aheadText, curX + 4, badgeY + 8);
+        curX += aheadWidth + 4;
+      }
+
+      if (node.behindCount && node.behindCount > 0) {
+        const behindText = `↓${node.behindCount}`;
+        const behindWidth = ctx.measureText(behindText).width + 8;
+        ctx.beginPath();
+        ctx.roundRect(curX, badgeY, behindWidth, 16, 3);
+        ctx.fillStyle = isDark ? '#7c2d12' : '#ffedd5';
+        ctx.fill();
+        ctx.fillStyle = isDark ? '#fb923c' : '#c2410c';
+        ctx.fillText(behindText, curX + 4, badgeY + 8);
+        curX += behindWidth + 4;
+      }
 
       // 4. Draw Title (Subject)
       ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-      ctx.fillStyle = isDark ? '#ffffff' : '#111111';
+      ctx.fillStyle = node.isWip ? '#4ec9b0' : (isDark ? '#ffffff' : '#111111');
       ctx.textBaseline = 'middle';
 
-      const titleX = badgeX + typeWidth + 8;
+      const titleX = curX + 4;
       const maxTitleWidth = plaque.width - (titleX - plaque.x) - 8;
       const truncatedTitle = this.truncateTextToWidth(node.subject, maxTitleWidth, ctx);
 
@@ -271,7 +297,9 @@ export class CanvasRenderer {
       // 5. Draw Author & Date
       ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
       ctx.fillStyle = isDark ? '#888888' : '#666666';
-      const subText = `${node.author}  •  ${node.formattedDate || node.relativeTime}`;
+      const subText = node.isWip
+        ? `${node.wipStagedCount ?? 0} staged, ${node.wipUnstagedCount ?? 0} unstaged changes`
+        : `${node.author}  •  ${node.formattedDate || node.relativeTime}`;
       const truncatedSub = this.truncateTextToWidth(subText, plaque.width - 16, ctx);
       ctx.fillText(truncatedSub, plaque.x + 8, plaque.y + 30);
 
@@ -319,7 +347,22 @@ export class CanvasRenderer {
 
       // Node Body
       ctx.beginPath();
-      if (node.nodeType === 'merge' || node.nodeType === 'octopus') {
+      if (node.nodeType === 'wip') {
+        // Working Tree (WIP) Node: Dashed outer halo + inner dot
+        ctx.arc(node.x, node.y, radius + 2, 0, Math.PI * 2);
+        ctx.fillStyle = isDark ? 'rgba(78, 201, 176, 0.2)' : 'rgba(78, 201, 176, 0.25)';
+        ctx.fill();
+        ctx.strokeStyle = '#4ec9b0';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 3]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, radius - 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#4ec9b0';
+        ctx.fill();
+      } else if (node.nodeType === 'merge' || node.nodeType === 'octopus') {
         ctx.arc(node.x, node.y, radius + 2, 0, Math.PI * 2);
         ctx.fillStyle = node.branchColor;
         ctx.fill();
@@ -363,8 +406,8 @@ export class CanvasRenderer {
         ctx.stroke();
       }
 
-      // HEAD Indicator
-      if (node.isHead) {
+      // HEAD Indicator (for non-WIP nodes)
+      if (node.isHead && node.nodeType !== 'wip') {
         ctx.beginPath();
         ctx.arc(node.x, node.y, radius + 5, 0, Math.PI * 2);
         ctx.strokeStyle = '#4ec9b0';
@@ -416,6 +459,8 @@ export class CanvasRenderer {
 
   private getNodeTypeBadgeLabel(type: CommitNodeType, node?: LayoutNode): string {
     switch (type) {
+      case 'wip':
+        return 'WIP';
       case 'initial':
         return 'INITIAL';
       case 'merge':
@@ -435,6 +480,8 @@ export class CanvasRenderer {
 
   private getNodeTypeBadgeBg(type: CommitNodeType, isDark: boolean): string {
     switch (type) {
+      case 'wip':
+        return isDark ? '#064e3b' : '#d1fae5';
       case 'initial':
         return isDark ? '#144234' : '#d1fae5';
       case 'merge':
@@ -453,6 +500,8 @@ export class CanvasRenderer {
 
   private getNodeTypeBadgeTextColor(type: CommitNodeType, isDark: boolean): string {
     switch (type) {
+      case 'wip':
+        return isDark ? '#34d399' : '#047857';
       case 'initial':
         return isDark ? '#34d399' : '#065f46';
       case 'merge':

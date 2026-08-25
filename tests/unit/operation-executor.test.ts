@@ -70,6 +70,36 @@ describe('GitOperationExecutor', () => {
     expect(tagResult.success).toBe(true);
   });
 
+  it('rejects force push if confirmed flag is missing', async () => {
+    const result = await executor.execute({
+      op: 'PUSH',
+      force: true,
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('CONFIRMATION_REQUIRED');
+  });
+
+  it('rejects file discard if confirmed flag is missing', async () => {
+    const result = await executor.execute({
+      op: 'DISCARD_FILE',
+      file: 'dummy.txt',
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('CONFIRMATION_REQUIRED');
+  });
+
+  it('rejects stash drop if confirmed flag is missing', async () => {
+    const result = await executor.execute({
+      op: 'STASH_DROP',
+      index: 0,
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('CONFIRMATION_REQUIRED');
+  });
+
   it('records executed operations in audit log', () => {
     const logs = executor.getOperationLogs();
     expect(logs.length).toBeGreaterThan(0);

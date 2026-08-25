@@ -41,7 +41,21 @@ export interface StashInfo {
 
 export interface ChangedFile {
   path: string;
-  status: 'M' | 'A' | 'D' | 'R' | 'C' | '?';
+  status: 'M' | 'A' | 'D' | 'R' | 'C' | '?' | 'U';
+}
+
+export interface WorkingTreeStatus {
+  isDirty: boolean;
+  staged: ChangedFile[];
+  unstaged: ChangedFile[];
+  untracked: ChangedFile[];
+  conflicted: string[];
+}
+
+export interface BranchSyncStatus {
+  ahead: number;
+  behind: number;
+  tracking?: string | undefined;
 }
 
 export interface FetchResult {
@@ -345,6 +359,126 @@ export class GitDataLayer {
       return await this.git.raw(['show', '--format=', hash, '--', filePath]);
     } catch {
       return '';
+    }
+  }
+
+  /**
+   * Retrieves current working tree status (staged, unstaged, untracked, conflicted).
+   */
+  async getWorkingTreeStatus(): Promise<WorkingTreeStatus> {
+    try {
+      const status = await this.git.status();
+      const staged: ChangedFile[] = [];
+      const unstaged: ChangedFile[] = [];
+      const untracked: ChangedFile[] = [];
+
+      for (const f of status.staged) {
+        staged.push({ path: f, status: 'A' });
+      }
+      for (const f of status.created) {
+        if (!staged.some((s) => s.path === f)) staged.push({ path: f, status: 'A' });
+      }
+      for (const f of status.deleted) {
+        if (status.staged.includes(f)) {
+          staged.push({ path: f, status: 'D' });
+        } else {
+          unstaged.push({ path: f, status: 'D' });
+        }
+      }
+      for (const f of status.modified) {
+        if (!staged.some((s) => s.path === f)) {
+          unstaged.push({ path: f, status: 'M' });
+        }
+      }
+      for (const f of status.not_added) {
+        untracked.push({ path: f, status: '?' });
+      }
+
+      const isDirty =
+        staged.length > 0 ||
+        unstaged.length > 0 ||
+        untracked.length > 0 ||
+        status.conflicted.length > 0;
+
+      return {
+        isDirty,
+        staged,
+        unstaged,
+        untracked,
+        conflicted: status.conflicted,
+      };
+    } catch {
+      return {
+        isDirty: false,
+        staged: [],
+        unstaged: [],
+        untracked: [],
+        conflicted: [],
+      };
+    }
+  }
+
+  /**
+   * Returns ahead and behind divergence counts for all local branches relative to upstream tracking branches.
+   */
+  async getBranchSyncStatus(): Promise<Record<string, BranchSyncStatus>> {
+    const result: Record<string, BranchSyncStatus> = {};
+    try {
+      const raw = await this.git.raw([
+        'for-each-ref',
+        '--format=%(refname:short)|%(upstream:short)|%(upstream:track)',
+        'refs/heads/',
+      ]);
+
+      const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean);
+      for (const line of lines) {
+        const [branchName, upstream, track] = line.split('|');
+        if (!branchName) continue;
+
+        let ahead = 0;
+        let behind = 0;
+
+        if (track) {
+          const aheadMatch = /ahead\s+(\d+)/.exec(track);
+          const behindMatch = /behind\s+(\d+)/.exec(track);
+          if (aheadMatch) ahead = parseInt(aheadMatch[1]!, 10);
+          if (behindMatch) behind = parseInt(behindMatch[1]!, 10);
+        }
+
+        result[branchName] = {
+          ahead,
+          behind,
+          tracking: upstream || undefined,
+        };
+      }
+    } catch {
+      // fallback to empty
+    }
+    return result;
+  }
+
+  /**
+   * Generates a deep link to create a Pull Request / Merge Request on GitHub, GitLab, Bitbucket, or Azure DevOps.
+   */
+  async getPrCreateUrl(branch: string, baseBranch = 'main'): Promise<string | null> {
+    const remoteInfo = await this.getRemoteRepoInfo();
+    if (!remoteInfo) return null;
+
+    const { webUrl, provider } = remoteInfo;
+    const cleanBranch = encodeURIComponent(branch);
+    const cleanBase = encodeURIComponent(baseBranch);
+
+    switch (provider) {
+      case 'github':
+        return `${webUrl}/compare/${cleanBase}...${cleanBranch}?expand=1`;
+      case 'gitlab':
+        return `${webUrl}/-/merge_requests/new?merge_request%5Bsource_branch%5D=${cleanBranch}&merge_request%5Btarget_branch%5D=${cleanBase}`;
+      case 'bitbucket':
+        return `${webUrl}/pull-requests/new?source=${cleanBranch}&dest=${cleanBase}`;
+      case 'azure':
+        return `${webUrl}/pullrequestcreate?sourceRef=${cleanBranch}&targetRef=${cleanBase}`;
+      default:
+        return webUrl;
     }
   }
 

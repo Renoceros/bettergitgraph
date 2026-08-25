@@ -3,6 +3,8 @@ import type { GraphLayout, LayoutNode, LayoutEdge } from '../components/GraphCan
 export interface SvgExportOptions {
   theme?: 'dark' | 'light';
   title?: string;
+  mainTrunkStrokeWidth?: number;
+  branchStrokeWidth?: number;
 }
 
 /**
@@ -14,6 +16,8 @@ export function exportGraphToSvg(
   options: SvgExportOptions = {}
 ): string {
   const isDark = options.theme !== 'light';
+  const mainStrokeWidth = options.mainTrunkStrokeWidth ?? 7.0;
+  const branchStrokeWidth = options.branchStrokeWidth ?? 3.0;
   const padding = 60;
 
   const minX = layout.bounds.minX - padding;
@@ -60,7 +64,7 @@ export function exportGraphToSvg(
   for (const edge of layout.edges) {
     if (edge.points.length < 2) continue;
 
-    const strokeWidth = edge.isMainEdge ? 5.0 : 2.5;
+    const strokeWidth = edge.isMainEdge ? mainStrokeWidth : branchStrokeWidth;
     let pathD = `M ${edge.points[0]!.x} ${edge.points[0]!.y}`;
 
     if (edge.points.length === 2) {
@@ -167,7 +171,10 @@ export function exportGraphToSvg(
   for (const node of layout.nodes) {
     const radius = node.radius;
 
-    if (node.nodeType === 'merge' || node.nodeType === 'octopus') {
+    if (node.nodeType === 'wip') {
+      svg += `    <circle cx="${node.x}" cy="${node.y}" r="${radius + 2}" fill="${isDark ? 'rgba(78,201,176,0.2)' : 'rgba(78,201,176,0.25)'}" stroke="#4ec9b0" stroke-width="2" stroke-dasharray="4,3" />\n`;
+      svg += `    <circle cx="${node.x}" cy="${node.y}" r="${radius - 3}" fill="#4ec9b0" />\n`;
+    } else if (node.nodeType === 'merge' || node.nodeType === 'octopus') {
       svg += `    <circle cx="${node.x}" cy="${node.y}" r="${radius + 2}" fill="${node.branchColor}" stroke="${bgColor}" stroke-width="2" />\n`;
       svg += `    <circle cx="${node.x}" cy="${node.y}" r="${radius - 2}" fill="${bgColor}" />\n`;
     } else if (node.nodeType === 'initial') {
@@ -188,7 +195,7 @@ export function exportGraphToSvg(
       svg += `    <circle cx="${node.x}" cy="${node.y}" r="${radius}" fill="${node.branchColor}" stroke="${node.isMainBranch ? '#ffffff' : (isDark ? '#2d2d2d' : '#e0e0e0')}" stroke-width="${node.isMainBranch ? 2 : 1.5}" />\n`;
     }
 
-    if (node.isHead) {
+    if (node.isHead && node.nodeType !== 'wip') {
       svg += `    <circle cx="${node.x}" cy="${node.y}" r="${radius + 5}" fill="none" stroke="#4ec9b0" stroke-width="2" stroke-dasharray="3,3" />\n`;
     }
   }

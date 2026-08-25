@@ -12,6 +12,7 @@ type WebviewToHostMessage =
   | { type: 'REQUEST_DIFF'; payload: { hash: string; filePath: string } }
   | { type: 'OPEN_DIFF'; payload: { hash: string; filePath: string } }
   | { type: 'OPEN_EXTERNAL_URL'; payload: { url: string } }
+  | { type: 'CREATE_PR_ON_WEB'; payload: { branch: string; baseBranch?: string } }
   | { type: 'SET_AUTO_FETCH_INTERVAL'; payload: { interval: number } }
   | { type: 'SEARCH_CHANGED_FILES'; payload: { query: string } }
   | { type: 'FETCH_ALL' }
@@ -142,6 +143,18 @@ export class WebviewManager {
             break;
           }
 
+          case 'CREATE_PR_ON_WEB': {
+            try {
+              const prUrl = await this.gitData.getPrCreateUrl(msg.payload.branch, msg.payload.baseBranch || 'main');
+              if (prUrl) {
+                await vscode.env.openExternal(vscode.Uri.parse(prUrl));
+              }
+            } catch (e) {
+              console.error('[BetterGitGraph] Failed to open PR create URL:', e);
+            }
+            break;
+          }
+
           case 'SET_AUTO_FETCH_INTERVAL': {
             try {
               const config = vscode.workspace.getConfiguration('bettergitgraph');
@@ -162,7 +175,7 @@ export class WebviewManager {
             if (result.success) {
               vscode.window.showInformationMessage(result.message);
               await this.sendGraphData();
-            } else {
+            } else if (result.error !== 'CONFIRMATION_REQUIRED') {
               vscode.window.showErrorMessage(result.message);
             }
             break;
@@ -175,12 +188,13 @@ export class WebviewManager {
 
     vscode.workspace.onDidChangeConfiguration(
       (e) => {
-        if (e.affectsConfiguration('bettergitgraph.autoFetchInterval')) {
-          const interval = vscode.workspace.getConfiguration('bettergitgraph').get<number>('autoFetchInterval', 0);
-          this.panel?.webview.postMessage({
-            type: 'AUTO_FETCH_INTERVAL_CHANGE',
-            payload: { interval },
-          });
+        if (
+          e.affectsConfiguration('bettergitgraph.autoFetchInterval') ||
+          e.affectsConfiguration('bettergitgraph.twoStageConfirmation') ||
+          e.affectsConfiguration('bettergitgraph.mainTrunkStrokeWidth') ||
+          e.affectsConfiguration('bettergitgraph.branchStrokeWidth')
+        ) {
+          void this.sendGraphData();
         }
       },
       undefined,
@@ -222,16 +236,37 @@ export class WebviewManager {
 
   private async sendGraphData(maxCount?: number): Promise<void> {
     if (!this.panel) return;
-    const [graph, branches, remoteInfo] = await Promise.all([
+    const [graph, branches, remoteInfo, workingTreeStatus, branchSyncStatus, stashes] = await Promise.all([
       this.gitData.getCommitGraph(maxCount !== undefined ? { maxCount } : undefined),
       this.gitData.getAllBranches(),
       this.gitData.getRemoteRepoInfo(),
+      this.gitData.getWorkingTreeStatus(),
+      this.gitData.getBranchSyncStatus(),
+      this.gitData.getStashes(),
     ]);
-    const autoFetchInterval = vscode.workspace.getConfiguration('bettergitgraph').get<number>('autoFetchInterval', 0);
+    const config = vscode.workspace.getConfiguration('bettergitgraph');
+    const autoFetchInterval = config.get<number>('autoFetchInterval', 0);
+    const twoStageConfirmation = config.get<boolean>('twoStageConfirmation', true);
+    const mainTrunkStrokeWidth = config.get<number>('mainTrunkStrokeWidth', 7);
+    const branchStrokeWidth = config.get<number>('branchStrokeWidth', 3);
     const repoName = path.basename(this.gitData.repoRoot) || 'Repository';
+
     await this.panel.webview.postMessage({
       type: 'GRAPH_DATA',
-      payload: { commits: graph.commits, edges: graph.edges, branches, remoteInfo, autoFetchInterval, repoName },
+      payload: {
+        commits: graph.commits,
+        edges: graph.edges,
+        branches,
+        remoteInfo,
+        autoFetchInterval,
+        repoName,
+        workingTreeStatus,
+        branchSyncStatus,
+        stashes,
+        twoStageConfirmation,
+        mainTrunkStrokeWidth,
+        branchStrokeWidth,
+      },
     });
   }
 
