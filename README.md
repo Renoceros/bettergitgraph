@@ -97,11 +97,12 @@ Switch seamlessly between two purpose-built visualization paradigms across 4 flo
 - Each commit's details are housed inside an encapsulated, sleek tag card with a connector notch.
 - In vertical modes (`TB`/`BT`), plaques are placed to the **Right**. In horizontal modes (`LR`/`RL`), plaques are placed **Above or Below** nodes, alternating vertically so horizontal timeline lanes have **zero horizontal label collisions**!
 
-### 4. ⬡ First-Class PR & Issue Nodes (Geometric Differentiation)
+### 4. ⬡ First-Class PR, Issue & WIP Nodes (Geometric Differentiation)
 Adhering to data visualization best practices, node types are clearly differentiated by geometry and accent colors:
 
 | Node Type | Geometric Shape | Accent Color | Visual Glyphs | Plaque Badge |
 |---|---|---|---|---|
+| **Working Tree (WIP)** | **Glowing Dashed Circle** $\bigodot$ | `#4ec9b0` (Emerald) | Dashed outer halo + inner edit dot | `WIP` (Emerald Pill) |
 | **Standard Commit** | Solid Circle $\bigcirc$ ($R=8\text{px}$) | Branch Color | Solid single stroke ($1.5\text{px}$) | `COMMIT` (Blue) |
 | **Root Commit** | Solid Circle with White Core | `#4ec9b0` | Double solid stroke ($2\text{px}$) | `INITIAL` (Emerald) |
 | **Merge Commit** | Concentric Double Ring $\odot$ | Branch Color | Outer circle + inner ring | `MERGE` / `OCTOPUS` (Purple) |
@@ -112,16 +113,17 @@ Adhering to data visualization best practices, node types are clearly differenti
 - Branch colors are generated deterministically using **32-bit FNV-1a hashing** mapped to an accessible color palette.
 - **Zero Session Drift:** The same branch name will always produce the exact same color, regardless of when it was created, how many other branches exist, or which computer you are using.
 
-### 6. 🪟 Interactive Floating Node Popup
-Click any commit node to display a floating details card:
+### 6. 🪟 Interactive Floating Node Popup & Commit Studio Drawer
+Click any commit node or WIP node to display detailed information:
+- **WIP Node Click:** Opens the **Commit & Staging Studio Drawer** to stage/unstage files (`git add`), inspect diffs, use Conventional Commit chips, and commit/push.
 - **Metadata:** Author, email, local/relative timestamp, and branch association.
 - **Parent Navigation:** Clickable parent commit chips that instantly pan and center the viewport on parent commits.
 - **Changed Files List & Live Filter:** Filter changed files with an in-card search input; click any file to open VS Code's diff editor.
-- **Quick Action Bar:** One-click Checkout, Branch creation, Revert, Hard Reset, and Web Link.
+- **Quick Action Bar:** One-click Checkout, Branch creation, Revert, Hard Reset, Raise PR, and Web Link.
 
 ### 7. 🖼️ Standalone Repo Map Export (SVG & PNG)
 - Right-click anywhere on the canvas background to export your entire repository history as a high-resolution standalone vector `.svg` or `.png` diagram.
-- SVG exports feature embedded CSS styling, `<clipPath>` containment, and precise font-metric truncation for presentation in browsers, reports, Figma, or documentation.
+- SVG exports feature embedded CSS styling, `<clipPath>` containment, custom curve stroke widths, and precise font-metric truncation for presentation in browsers, reports, Figma, or documentation.
 
 ---
 
@@ -129,6 +131,10 @@ Click any commit node to display a floating details card:
 
 | Action | Executed Git Command | Beginner Description | Confirmation Required |
 |---|---|---|:---:|
+| **Stage File** | `git add <file>` | *"Stage file for the next commit"* | No |
+| **Unstage File** | `git restore --staged <file>` | *"Unstage file back to working tree"* | No |
+| **Commit Changes** | `git commit -m <message>` | *"Save staged snapshot with message"* | No |
+| **Raise PR / Create MR** | Deep Link to GitHub / GitLab / Bitbucket / Azure | *"Open web comparison & PR creation"* | No |
 | **Checkout** | `git checkout <hash>` | *"Go to this point in time"* | No |
 | **Create Branch** | `git branch <name> <hash>` | *"Start a new branch from here"* | No |
 | **Revert** | `git revert <hash>` | *"Safely undo this commit with an inverse change"* | Optional (Beginner Mode) |
@@ -136,9 +142,10 @@ Click any commit node to display a floating details card:
 | **Tag** | `git tag <name> <hash>` | *"Add a permanent named bookmark"* | No |
 | **Reset (Soft)** | `git reset --soft <hash>` | *"Move pointer; keep changes staged"* | Optional (Beginner Mode) |
 | **Reset (Mixed)** | `git reset --mixed <hash>` | *"Move pointer; keep changes unstaged in working directory"* | Optional (Beginner Mode) |
-| **Reset (Hard)** | `git reset --hard <hash>` | *"Move pointer; DISCARD all uncommitted changes"* | **Yes (Always)** |
+| **Reset (Hard)** | `git reset --hard <hash>` | *"Move pointer; DISCARD all uncommitted changes"* | **2-Stage Confirmation** |
+| **Force Push** | `git push --force-with-lease` | *"Overwrite remote branch history"* | **2-Stage Confirmation** |
 | **Delete Branch** | `git branch -d <name>` | *"Remove an already-merged branch"* | No |
-| **Force Delete Branch**| `git branch -D <name>` | *"Permanently remove an unmerged branch"* | **Yes (Always)** |
+| **Force Delete Branch**| `git branch -D <name>` | *"Permanently remove an unmerged branch"* | **2-Stage Confirmation** |
 
 ---
 
@@ -148,6 +155,9 @@ Configure BetterGitGraph via VS Code Settings (<kbd>Cmd+,</kbd> / <kbd>Ctrl+,</k
 
 | Setting | Type | Default | Description |
 |---|---|---|---|
+| `bettergitgraph.twoStageConfirmation` | `boolean` | `true` | Require a 2nd confirmation dialog before executing destructive Git actions (Reset Hard, Force Push, Force Delete Branch). |
+| `bettergitgraph.mainTrunkStrokeWidth` | `number` | `7` | Stroke width (thickness) for the central main/master trunk curve in pixels ($2-16$). |
+| `bettergitgraph.branchStrokeWidth` | `number` | `3` | Stroke width (thickness) for feature and bugfix branch curves in pixels ($1-10$). |
 | `bettergitgraph.layoutDirection` | `string` (`"TB" \| "BT" \| "LR" \| "RL"`) | `"TB"` | Graph flow direction: Top-to-Bottom, Bottom-to-Top, Left-to-Right, or Right-to-Left. |
 | `bettergitgraph.dateFormat` | `string` (`"local" \| "relative" \| "iso"`) | `"local"` | Format for commit timestamps: Local Time (`19:45 GMT+8`), Relative (`2h ago`), or ISO. |
 | `bettergitgraph.autoFetchInterval` | `number` | `0` | Interval in minutes for background auto-fetching (`0` = disabled, `1`, `5`, `15`, `30`, `60`). |

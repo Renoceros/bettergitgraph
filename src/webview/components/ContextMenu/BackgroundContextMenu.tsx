@@ -48,8 +48,10 @@ export const BackgroundContextMenu: React.FC<BackgroundContextMenuProps> = ({
     };
   }, [onClose]);
 
-  const adjustedX = Math.min(x, window.innerWidth - 240);
-  const adjustedY = Math.min(y, window.innerHeight - 200);
+  const menuWidth = 240;
+  const estimatedHeight = 220;
+  const adjustedX = Math.max(10, Math.min(x, window.innerWidth - menuWidth - 10));
+  const adjustedY = Math.max(10, Math.min(y, window.innerHeight - estimatedHeight - 10));
 
   return (
     <div
@@ -59,14 +61,18 @@ export const BackgroundContextMenu: React.FC<BackgroundContextMenuProps> = ({
         position: 'fixed',
         left: adjustedX,
         top: adjustedY,
-        width: 230,
+        width: menuWidth,
+        maxHeight: 'calc(100vh - 24px)',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        boxSizing: 'border-box',
         backgroundColor: 'var(--vscode-menu-background, #252526)',
         color: 'var(--vscode-menu-foreground, #cccccc)',
         border: '1px solid var(--vscode-menu-border, #454545)',
         borderRadius: 6,
         boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
         padding: '6px 0',
-        zIndex: 1100,
+        zIndex: 2000,
         fontSize: 12,
         userSelect: 'none',
       }}

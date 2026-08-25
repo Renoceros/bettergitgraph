@@ -5,6 +5,15 @@ All notable changes to BetterGitGraph will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-08-25
+
+### Fixed
+- **Context Menu Viewport Clamping & Scrollability**:
+  - Implemented dynamic boundary detection and `maxHeight: calc(100vh - 24px)` with `overflow-y: auto`, preventing the right-click menu from clipping outside non-fullscreen, small laptop, or split editor windows.
+- **Menu Item Text & URL Truncation**:
+  - Added strict `overflow: hidden`, `text-overflow: ellipsis`, and `white-space: nowrap` across all menu item titles, beginner subtitles, and commands/URLs to prevent long text and links from overflowing out of the menu container.
+  - Added native hover tooltips to show full commands and URLs on demand.
+
 ## [1.3.0] - 2026-08-25
 
 ### Added

@@ -90,8 +90,10 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     }
   };
 
-  const adjustedX = Math.min(x, window.innerWidth - 280);
-  const adjustedY = Math.min(y, window.innerHeight - 380);
+  const menuWidth = 285;
+  const estimatedHeight = 520;
+  const adjustedX = Math.max(10, Math.min(x, window.innerWidth - menuWidth - 10));
+  const adjustedY = Math.max(10, Math.min(y, window.innerHeight - estimatedHeight - 10));
 
   return (
     <div
@@ -101,14 +103,18 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
         position: 'fixed',
         left: adjustedX,
         top: adjustedY,
-        width: 270,
+        width: menuWidth,
+        maxHeight: 'calc(100vh - 24px)',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        boxSizing: 'border-box',
         backgroundColor: 'var(--vscode-menu-background, #252526)',
         color: 'var(--vscode-menu-foreground, #cccccc)',
         border: '1px solid var(--vscode-menu-border, #454545)',
         borderRadius: 6,
-        boxShadow: '0 6px 18px rgba(0,0,0,0.4)',
+        boxShadow: '0 6px 20px rgba(0,0,0,0.5)',
         padding: '6px 0',
-        zIndex: 1000,
+        zIndex: 2000,
         fontSize: 12,
         userSelect: 'none',
       }}
@@ -121,9 +127,12 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
           opacity: 0.6,
           borderBottom: '1px solid var(--vscode-menu-separatorBackground, #3c3c3c)',
           marginBottom: 4,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
         }}
       >
-        Commit {node.shortHash}
+        Commit {node.shortHash} ({node.branchName})
       </div>
 
       <MenuItem
@@ -306,6 +315,9 @@ const MenuItem: React.FC<MenuItemProps> = ({
         gap: 2,
         cursor: 'pointer',
         color: danger ? '#f14c4c' : 'inherit',
+        overflow: 'hidden',
+        boxSizing: 'border-box',
+        width: '100%',
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.backgroundColor = danger
@@ -316,23 +328,48 @@ const MenuItem: React.FC<MenuItemProps> = ({
         e.currentTarget.style.backgroundColor = 'transparent';
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, flexShrink: 0 }}>
           {icon}
         </span>
-        <span style={{ fontWeight: 500 }}>{title}</span>
+        <span
+          title={title}
+          style={{
+            fontWeight: 500,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {title}
+        </span>
       </div>
       {beginnerMode && beginnerSubtitle && (
-        <span style={{ fontSize: 10, opacity: 0.7, paddingLeft: 26 }}>
+        <span
+          title={beginnerSubtitle}
+          style={{
+            fontSize: 10,
+            opacity: 0.7,
+            paddingLeft: 26,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
           {beginnerSubtitle}
         </span>
       )}
       <span
+        title={gitCommand}
         style={{
           fontSize: 10,
           fontFamily: 'monospace',
           opacity: 0.5,
           paddingLeft: 26,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          display: 'block',
         }}
       >
         {gitCommand}
