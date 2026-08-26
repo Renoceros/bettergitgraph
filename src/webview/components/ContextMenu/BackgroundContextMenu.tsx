@@ -49,22 +49,34 @@ export const BackgroundContextMenu: React.FC<BackgroundContextMenuProps> = ({
   }, [onClose]);
 
   const menuWidth = 240;
-  const estimatedHeight = 220;
-  const adjustedX = Math.max(10, Math.min(x, window.innerWidth - menuWidth - 10));
-  const adjustedY = Math.max(10, Math.min(y, window.innerHeight - estimatedHeight - 10));
+  const padding = 12;
+  const vh = window.innerHeight;
+  const vw = window.innerWidth;
+
+  const adjustedX = Math.max(padding, Math.min(x, vw - menuWidth - padding));
+
+  const targetMaxHeight = Math.min(300, vh - padding * 2);
+  let adjustedY = y;
+  if (adjustedY + targetMaxHeight > vh - padding) {
+    adjustedY = Math.max(padding, vh - targetMaxHeight - padding);
+  }
+  const computedMaxHeight = Math.max(140, vh - adjustedY - padding);
 
   return (
     <div
       ref={menuRef}
       role="menu"
+      onWheel={(e) => e.stopPropagation()}
       style={{
         position: 'fixed',
         left: adjustedX,
         top: adjustedY,
         width: menuWidth,
-        maxHeight: 'calc(100vh - 24px)',
+        maxHeight: `${computedMaxHeight}px`,
         overflowY: 'auto',
         overflowX: 'hidden',
+        overscrollBehavior: 'contain',
+        scrollbarWidth: 'thin',
         boxSizing: 'border-box',
         backgroundColor: 'var(--vscode-menu-background, #252526)',
         color: 'var(--vscode-menu-foreground, #cccccc)',

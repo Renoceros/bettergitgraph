@@ -5,6 +5,13 @@ All notable changes to BetterGitGraph will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2026-08-26
+
+### Fixed
+- **Context Menu Scroll Fix & Dynamic Height Clamping**:
+  - Re-engineered vertical viewport calculation to accurately compute available bottom space (`vh - adjustedY - padding`), guaranteeing that `maxHeight` activates the internal scroll container whenever the menu exceeds visible screen area.
+  - Added `onWheel` event isolation (`e.stopPropagation()`) and `overscroll-behavior: contain` to ensure mouse wheel scrolling on context menus never leaks or triggers canvas zoom.
+
 ## [1.3.1] - 2026-08-25
 
 ### Fixed
