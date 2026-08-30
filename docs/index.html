@@ -3,30 +3,37 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BetterGitGraph — Modern, Interactive Git Visualization for VS Code</title>
-  <meta name="description" content="A high-performance, node-based Git visualization and repository management extension for Visual Studio Code. Beautiful Bézier curves, deterministic colors, staging studio, and destructive safety guardrails." />
+  <title>BetterGitGraph — The Git Visualizer VS Code Deserves</title>
+  <meta name="description" content="A modern, high-performance, node-based Git visualization and commit studio for Visual Studio Code. Beautiful Bézier curves, deterministic colors, staging studio, and destructive safety guardrails." />
   <link rel="icon" type="image/png" href="resources/icon.png" />
   
-  <!-- Inter & JetBrains Mono Fonts -->
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <style>
     :root {
-      --bg-dark: #0f1117;
-      --bg-card: #161b22;
-      --bg-card-hover: #1c2128;
-      --border-color: #30363d;
-      --border-focus: #58a6ff;
-      --text-main: #f0f6fc;
-      --text-muted: #8b949e;
-      --accent-emerald: #4ec9b0;
-      --accent-blue: #58a6ff;
-      --accent-purple: #bc8cff;
-      --accent-orange: #f0883e;
-      --accent-red: #ff7b72;
-      --accent-yellow: #d29922;
+      --bg-editor: #1e1e1e;
+      --bg-panel: #252526;
+      --bg-card: #2d2d2d;
+      --bg-card-hover: #333333;
+      --border-main: #3c3c3c;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --text-main: #cccccc;
+      --text-bright: #ffffff;
+      --text-muted: #888888;
+      
+      /* BetterGitGraph Official Color Palette */
+      --git-trunk: #4ec9b0;
+      --git-blue: #569cd6;
+      --git-purple: #8957e5;
+      --git-green: #238636;
+      --git-orange: #ce9178;
+      --git-yellow: #e5c07b;
+      --git-red: #f14c4c;
+      --git-wip: #4ec9b0;
+      
       --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
     }
@@ -42,853 +49,971 @@
     }
 
     body {
-      background-color: var(--bg-dark);
+      background-color: var(--bg-editor);
       color: var(--text-main);
       font-family: var(--font-sans);
       line-height: 1.6;
       overflow-x: hidden;
+      position: relative;
     }
 
-    /* Ambient Background Glows */
-    .glow-sphere {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(120px);
+    /* Fixed Interactive Canvas Background */
+    #graph-bg-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
       pointer-events: none;
       z-index: 0;
-      opacity: 0.15;
-    }
-    .glow-1 {
-      top: -100px;
-      left: 20%;
-      width: 500px;
-      height: 500px;
-      background: radial-gradient(circle, var(--accent-emerald), transparent);
-    }
-    .glow-2 {
-      top: 400px;
-      right: 10%;
-      width: 600px;
-      height: 600px;
-      background: radial-gradient(circle, var(--accent-blue), transparent);
+      opacity: 0.85;
     }
 
-    /* Navigation Bar */
-    header {
-      position: sticky;
+    /* Floating Top HUD Bar */
+    .top-hud-bar {
+      position: fixed;
       top: 0;
-      z-index: 100;
-      backdrop-filter: blur(16px);
-      background-color: rgba(15, 17, 23, 0.85);
-      border-bottom: 1px solid var(--border-color);
-    }
-    .nav-container {
-      max-width: 1200px;
-      margin: 0 auto;
+      left: 0;
+      width: 100%;
+      z-index: 1000;
+      background-color: rgba(30, 30, 30, 0.88);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-main);
+      padding: 10px 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 14px 24px;
     }
-    .brand {
+    .hud-left {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 16px;
+    }
+    .brand-pill {
+      display: flex;
+      align-items: center;
+      gap: 10px;
       text-decoration: none;
-      color: var(--text-main);
+      color: var(--text-bright);
       font-weight: 700;
-      font-size: 1.15rem;
+      font-size: 1.05rem;
     }
-    .brand img {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
+    .brand-pill img {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
     }
-    .brand span {
-      background: linear-gradient(135deg, #ffffff 0%, var(--accent-emerald) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .nav-links {
+    .stats-hud {
       display: flex;
       align-items: center;
-      gap: 24px;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 12px;
+      background-color: rgba(25, 25, 26, 0.9);
+      border: 1px solid var(--border-subtle);
+      font-size: 11px;
+      color: var(--text-main);
+    }
+    .stats-hud .count-emerald { font-weight: 600; color: var(--git-trunk); }
+    .stats-hud .count-blue { font-weight: 600; color: var(--git-blue); }
+
+    .hud-links {
+      display: flex;
+      align-items: center;
+      gap: 20px;
       list-style: none;
     }
-    .nav-links a {
+    .hud-links a {
       color: var(--text-muted);
       text-decoration: none;
-      font-size: 0.95rem;
+      font-size: 13px;
       font-weight: 500;
-      transition: color 0.2s ease;
+      transition: color 0.15s;
     }
-    .nav-links a:hover {
-      color: var(--text-main);
+    .hud-links a:hover {
+      color: var(--text-bright);
     }
-    .btn-cta {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
-      color: #ffffff;
-      padding: 8px 18px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 0.9rem;
-      text-decoration: none;
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    .btn-cta:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 14px rgba(46, 160, 67, 0.4);
-    }
-
-    /* Container */
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 24px;
-      position: relative;
-      z-index: 1;
-    }
-
-    /* Hero Section */
-    .hero {
-      padding: 80px 0 60px;
-      text-align: center;
-    }
-    .badge-pill {
+    .btn-install {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 12px;
-      border-radius: 20px;
-      background-color: rgba(78, 201, 176, 0.12);
-      border: 1px solid rgba(78, 201, 176, 0.3);
-      color: var(--accent-emerald);
-      font-size: 0.85rem;
+      background-color: var(--git-green);
+      color: #ffffff;
+      padding: 6px 14px;
+      border-radius: 5px;
+      font-size: 12px;
       font-weight: 600;
-      margin-bottom: 24px;
+      text-decoration: none;
+      transition: background-color 0.15s, transform 0.1s;
     }
-    .hero h1 {
-      font-size: 3.4rem;
-      font-weight: 800;
-      line-height: 1.15;
-      letter-spacing: -0.02em;
-      margin-bottom: 20px;
+    .btn-install:hover {
+      background-color: #2ea043;
+      transform: translateY(-1px);
     }
-    .hero h1 span.gradient {
-      background: linear-gradient(135deg, #58a6ff 0%, #4ec9b0 50%, #bc8cff 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+
+    /* Main Container */
+    .content-container {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 90px 24px 60px;
+      position: relative;
+      z-index: 10;
     }
-    .hero p.lead {
-      font-size: 1.25rem;
-      color: var(--text-muted);
-      max-width: 760px;
-      margin: 0 auto 36px;
-      font-weight: 400;
+
+    /* Hero Section */
+    .hero-section {
+      text-align: center;
+      padding: 50px 0 60px;
     }
-    .hero-actions {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-      flex-wrap: wrap;
-      margin-bottom: 40px;
-    }
-    .btn-secondary {
+    .version-tag {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      background-color: var(--bg-card);
-      color: var(--text-main);
-      padding: 10px 22px;
-      border-radius: 8px;
+      padding: 4px 14px;
+      border-radius: 20px;
+      background-color: rgba(78, 201, 176, 0.12);
+      border: 1px solid rgba(78, 201, 176, 0.35);
+      color: var(--git-trunk);
+      font-size: 12px;
       font-weight: 600;
-      font-size: 0.95rem;
-      text-decoration: none;
-      border: 1px solid var(--border-color);
-      transition: background-color 0.2s, border-color 0.2s;
+      font-family: var(--font-mono);
+      margin-bottom: 20px;
     }
-    .btn-secondary:hover {
-      background-color: var(--bg-card-hover);
-      border-color: var(--text-muted);
+    .hero-title {
+      font-size: 3.6rem;
+      font-weight: 800;
+      line-height: 1.12;
+      letter-spacing: -0.03em;
+      color: var(--text-bright);
+      margin-bottom: 20px;
     }
-    
-    /* Quick Install Command Box */
-    .quick-cmd-box {
+    .hero-title .trunk-gradient {
+      background: linear-gradient(135deg, #569cd6 0%, #4ec9b0 50%, #8957e5 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero-subtitle {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      max-width: 720px;
+      margin: 0 auto 32px;
+      font-weight: 400;
+    }
+    .hero-cta-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 36px;
+    }
+    .btn-hero-primary {
       display: inline-flex;
       align-items: center;
-      background-color: #0d1117;
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      padding: 8px 16px;
-      font-family: var(--font-mono);
-      font-size: 0.9rem;
-      color: var(--accent-emerald);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-      margin-bottom: 48px;
-      cursor: pointer;
-      user-select: all;
-      transition: border-color 0.2s;
+      gap: 8px;
+      background-color: var(--git-green);
+      color: #ffffff;
+      padding: 10px 22px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 14px;
+      text-decoration: none;
+      box-shadow: 0 4px 16px rgba(35, 134, 54, 0.4);
+      transition: all 0.15s;
     }
-    .quick-cmd-box:hover {
-      border-color: var(--accent-emerald);
+    .btn-hero-primary:hover {
+      background-color: #2ea043;
+      transform: translateY(-1px);
     }
-    .quick-cmd-box .copy-icon {
-      margin-left: 12px;
-      color: var(--text-muted);
-      font-size: 0.8rem;
+    .btn-hero-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background-color: var(--bg-panel);
+      color: var(--text-bright);
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 14px;
+      text-decoration: none;
+      border: 1px solid var(--border-main);
+      transition: all 0.15s;
+    }
+    .btn-hero-secondary:hover {
+      background-color: var(--bg-card);
+      border-color: var(--text-muted);
     }
 
-    /* Hero Screenshot Showcase */
-    .showcase-wrapper {
-      background: linear-gradient(180deg, rgba(30, 34, 45, 0.8) 0%, rgba(22, 27, 34, 0.9) 100%);
-      border: 1px solid var(--border-color);
-      border-radius: 16px;
-      padding: 12px;
-      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
-      margin-bottom: 80px;
-    }
-    .showcase-tabs {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 12px;
-      padding-left: 8px;
-    }
-    .showcase-tab {
-      background: transparent;
-      border: 1px solid transparent;
-      color: var(--text-muted);
-      font-size: 0.85rem;
-      font-weight: 600;
-      padding: 6px 14px;
-      border-radius: 6px;
+    /* CLI Install Pill */
+    .cli-install-box {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background-color: #141414;
+      border: 1px solid var(--border-main);
+      border-radius: 8px;
+      padding: 8px 18px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--git-trunk);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
       cursor: pointer;
-      transition: all 0.2s;
+      margin-bottom: 50px;
+      transition: border-color 0.2s;
     }
-    .showcase-tab.active {
-      background-color: var(--bg-card);
-      border-color: var(--border-color);
-      color: var(--text-main);
+    .cli-install-box:hover {
+      border-color: var(--git-trunk);
     }
-    .showcase-img-container {
-      position: relative;
-      border-radius: 10px;
+    .cli-install-box .copy-pill {
+      font-size: 11px;
+      color: var(--text-muted);
+      background-color: #252526;
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border-main);
+    }
+
+    /* Interactive Graph Sandbox Frame */
+    .sandbox-frame {
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border-main);
+      border-radius: 12px;
       overflow: hidden;
-      border: 1px solid #30363d;
-      background-color: #0d1117;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+      margin-bottom: 90px;
+      text-align: left;
     }
-    .showcase-img {
+    .sandbox-header {
+      background-color: #1e1e1e;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border-main);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+    }
+    .sandbox-window-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .dot-red { background: #ff5f56; }
+    .dot-yellow { background: #ffbd2e; }
+    .dot-green { background: #27c93f; }
+
+    .sandbox-toolbar {
+      padding: 8px 16px;
+      background-color: #252526;
+      border-bottom: 1px solid var(--border-main);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .mock-search-input {
+      background-color: #3c3c3c;
+      border: 1px solid #454545;
+      border-radius: 4px;
+      color: var(--text-main);
+      padding: 4px 10px;
+      font-size: 12px;
+      font-family: var(--font-sans);
+      width: 240px;
+      outline: none;
+    }
+    .mock-prefix-chip {
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      background-color: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-main);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .mock-prefix-chip:hover {
+      border-color: var(--git-trunk);
+      color: var(--git-trunk);
+    }
+
+    .sandbox-canvas-area {
+      position: relative;
+      height: 480px;
+      background-color: #1e1e1e;
+      overflow: hidden;
+      cursor: grab;
+    }
+    .sandbox-canvas-area:active {
+      cursor: grabbing;
+    }
+    #interactive-demo-canvas {
       width: 100%;
-      height: auto;
+      height: 100%;
       display: block;
     }
 
-    /* Section Headings */
-    .section-title {
+    /* Section Headers */
+    .section-head {
       text-align: center;
-      margin-bottom: 48px;
+      margin-bottom: 50px;
     }
-    .section-title h2 {
+    .section-head h2 {
       font-size: 2.2rem;
       font-weight: 700;
-      margin-bottom: 12px;
+      color: var(--text-bright);
+      margin-bottom: 10px;
     }
-    .section-title p {
+    .section-head p {
       color: var(--text-muted);
       font-size: 1.1rem;
-      max-width: 680px;
+      max-width: 650px;
       margin: 0 auto;
     }
 
-    /* Feature Grid */
-    .feature-grid {
+    /* Plaque-Styled Feature Showcase Cards */
+    .plaque-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 24px;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 26px;
       margin-bottom: 90px;
     }
-    .feature-card {
-      background-color: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      padding: 28px;
+    .plaque-card {
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border-main);
+      border-radius: 8px;
+      padding: 22px;
+      position: relative;
       transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     }
-    .feature-card:hover {
-      transform: translateY(-3px);
-      border-color: var(--accent-emerald);
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+    .plaque-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--git-trunk);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
     }
-    .feature-icon {
-      width: 44px;
-      height: 44px;
-      border-radius: 10px;
+    .plaque-notch {
+      position: absolute;
+      top: 24px;
+      left: -8px;
+      width: 8px;
+      height: 16px;
+      background-color: inherit;
+      border-left: 1px solid var(--border-main);
+      border-top: 1px solid var(--border-main);
+      border-bottom: 1px solid var(--border-main);
+      border-top-left-radius: 4px;
+      border-bottom-left-radius: 4px;
+    }
+    .plaque-header-row {
       display: flex;
       align-items: center;
-      justify-content: center;
-      font-size: 1.4rem;
-      margin-bottom: 18px;
+      justify-content: space-between;
+      margin-bottom: 12px;
     }
-    .icon-emerald { background: rgba(78, 201, 176, 0.15); color: var(--accent-emerald); }
-    .icon-blue { background: rgba(88, 166, 255, 0.15); color: var(--accent-blue); }
-    .icon-purple { background: rgba(188, 140, 255, 0.15); color: var(--accent-purple); }
-    .icon-orange { background: rgba(240, 136, 62, 0.15); color: var(--accent-orange); }
-    .icon-red { background: rgba(255, 123, 114, 0.15); color: var(--accent-red); }
-    .icon-yellow { background: rgba(210, 153, 34, 0.15); color: var(--accent-yellow); }
-
-    .feature-card h3 {
-      font-size: 1.2rem;
-      font-weight: 600;
-      margin-bottom: 10px;
-    }
-    .feature-card p {
-      color: var(--text-muted);
-      font-size: 0.95rem;
-      line-height: 1.55;
-    }
-
-    /* Installation Guide Section */
-    .guide-section {
-      background-color: #12161f;
-      border: 1px solid var(--border-color);
-      border-radius: 16px;
-      padding: 40px;
-      margin-bottom: 90px;
-    }
-    .guide-tabs {
-      display: flex;
-      gap: 12px;
-      border-bottom: 1px solid var(--border-color);
-      padding-bottom: 16px;
-      margin-bottom: 28px;
-    }
-    .guide-tab-btn {
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      padding: 8px 16px;
-      border-radius: 6px;
-      transition: all 0.2s;
-    }
-    .guide-tab-btn.active {
-      background-color: var(--bg-card);
-      color: var(--accent-emerald);
-      border: 1px solid var(--border-color);
-    }
-    .guide-content-panel {
-      display: none;
-    }
-    .guide-content-panel.active {
-      display: block;
-    }
-    .step-list {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-    .step-item {
-      display: flex;
-      gap: 16px;
-    }
-    .step-number {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background-color: var(--accent-blue);
-      color: #ffffff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    .plaque-pill {
+      font-size: 10px;
       font-weight: 700;
-      font-size: 0.9rem;
-      flex-shrink: 0;
+      font-family: var(--font-mono);
+      padding: 2px 8px;
+      border-radius: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
-    .step-body h4 {
-      font-size: 1.05rem;
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-    .step-body p {
+    .pill-initial { background: rgba(78, 201, 176, 0.2); color: #4ec9b0; border: 1px solid rgba(78, 201, 176, 0.4); }
+    .pill-pr { background: rgba(137, 87, 229, 0.2); color: #8957e5; border: 1px solid rgba(137, 87, 229, 0.4); }
+    .pill-issue { background: rgba(35, 134, 54, 0.2); color: #3fb950; border: 1px solid rgba(35, 134, 54, 0.4); }
+    .pill-wip { background: rgba(78, 201, 176, 0.2); color: #4ec9b0; border: 1px dashed #4ec9b0; }
+    .pill-sync { background: rgba(86, 156, 214, 0.2); color: #569cd6; border: 1px solid rgba(86, 156, 214, 0.4); }
+    .pill-danger { background: rgba(241, 76, 76, 0.2); color: #f14c4c; border: 1px solid rgba(241, 76, 76, 0.4); }
+
+    .plaque-hash {
+      font-family: var(--font-mono);
+      font-size: 11px;
       color: var(--text-muted);
-      font-size: 0.95rem;
+    }
+    .plaque-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--text-bright);
       margin-bottom: 8px;
     }
-    .code-block {
-      background-color: #0d1117;
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      padding: 12px 16px;
+    .plaque-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.55;
+      margin-bottom: 16px;
+    }
+    .plaque-footer {
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Installation Guide Hub */
+    .guide-hub {
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border-main);
+      border-radius: 12px;
+      padding: 36px;
+      margin-bottom: 90px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+    }
+    .guide-tabs-bar {
+      display: flex;
+      gap: 10px;
+      border-bottom: 1px solid var(--border-main);
+      padding-bottom: 14px;
+      margin-bottom: 28px;
+    }
+    .tab-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .tab-btn.active {
+      background-color: var(--bg-card);
+      border-color: var(--border-main);
+      color: var(--git-trunk);
+    }
+    .tab-panel {
+      display: none;
+    }
+    .tab-panel.active {
+      display: block;
+    }
+
+    .install-step {
+      display: flex;
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+    .step-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background-color: #333333;
+      border: 1px solid var(--border-main);
+      color: var(--git-trunk);
       font-family: var(--font-mono);
-      font-size: 0.88rem;
+      font-weight: 700;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .step-content h4 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-bright);
+      margin-bottom: 4px;
+    }
+    .step-content p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .terminal-box {
+      background-color: #141414;
+      border: 1px solid var(--border-main);
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-family: var(--font-mono);
+      font-size: 12px;
       color: #e6edf3;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      overflow-x: auto;
+      margin-bottom: 10px;
     }
-    .code-block code {
-      color: #7ee787;
-    }
-    .copy-btn {
+    .terminal-box code { color: #7ee787; }
+    .btn-copy-code {
       background: transparent;
-      border: 1px solid var(--border-color);
+      border: 1px solid var(--border-main);
       color: var(--text-muted);
       border-radius: 4px;
-      padding: 4px 8px;
-      font-size: 0.75rem;
+      padding: 2px 8px;
+      font-size: 11px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
-    .copy-btn:hover {
-      color: var(--text-main);
-      border-color: var(--text-main);
+    .btn-copy-code:hover {
+      border-color: var(--git-trunk);
+      color: var(--git-trunk);
     }
 
-    /* FAQ / Q&A Section */
-    .faq-search-wrapper {
-      max-width: 600px;
-      margin: 0 auto 36px;
+    /* Keybindings & Controls */
+    .controls-table-wrapper {
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border-main);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 90px;
+    }
+    table.kb-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 13px;
+    }
+    table.kb-table th {
+      background-color: #1e1e1e;
+      padding: 12px 18px;
+      font-weight: 600;
+      color: var(--text-bright);
+      border-bottom: 1px solid var(--border-main);
+    }
+    table.kb-table td {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border-main);
+      color: var(--text-main);
+    }
+    table.kb-table tr:last-child td {
+      border-bottom: none;
+    }
+    table.kb-table tr:hover td {
+      background-color: var(--bg-card);
+    }
+    kbd {
+      background-color: #1e1e1e;
+      border: 1px solid #454545;
+      border-bottom-color: #333333;
+      border-radius: 4px;
+      box-shadow: inset 0 -1px 0 #333;
+      color: #e6edf3;
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 2px 6px;
+      font-weight: 500;
+    }
+
+    /* Q&A Accordion */
+    .qa-search-box {
+      max-width: 580px;
+      margin: 0 auto 30px;
       position: relative;
     }
-    .faq-search-input {
+    .qa-input {
       width: 100%;
-      background-color: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
-      padding: 12px 20px 12px 44px;
-      color: var(--text-main);
-      font-size: 1rem;
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border-main);
+      border-radius: 8px;
+      padding: 12px 18px 12px 42px;
+      color: var(--text-bright);
+      font-size: 14px;
       outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      transition: border-color 0.2s;
     }
-    .faq-search-input:focus {
-      border-color: var(--accent-blue);
-      box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
+    .qa-input:focus {
+      border-color: var(--git-trunk);
     }
-    .faq-search-icon {
+    .qa-icon {
       position: absolute;
-      left: 16px;
+      left: 14px;
       top: 50%;
       transform: translateY(-50%);
       color: var(--text-muted);
-      font-size: 1.1rem;
     }
-    .faq-list {
+    .qa-accordion-list {
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
       max-width: 860px;
       margin: 0 auto 90px;
     }
-    .faq-item {
-      background-color: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
+    .qa-card {
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border-main);
+      border-radius: 8px;
       overflow: hidden;
       transition: border-color 0.2s;
     }
-    .faq-item:hover {
-      border-color: #484f58;
+    .qa-card:hover {
+      border-color: #555555;
     }
-    .faq-question {
-      padding: 18px 24px;
+    .qa-header {
+      padding: 16px 20px;
       font-weight: 600;
-      font-size: 1.05rem;
+      font-size: 14px;
+      color: var(--text-bright);
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: space-between;
       user-select: none;
     }
-    .faq-arrow {
+    .qa-chevron {
       color: var(--text-muted);
-      transition: transform 0.25s ease;
+      transition: transform 0.2s ease;
     }
-    .faq-item.open .faq-arrow {
+    .qa-card.open .qa-chevron {
       transform: rotate(180deg);
-      color: var(--accent-emerald);
+      color: var(--git-trunk);
     }
-    .faq-answer {
+    .qa-body {
       max-height: 0;
       overflow: hidden;
       transition: max-height 0.3s ease, padding 0.3s ease;
-      background-color: rgba(15, 17, 23, 0.4);
+      background-color: #1b1b1b;
       color: var(--text-muted);
-      font-size: 0.95rem;
+      font-size: 13px;
       line-height: 1.6;
     }
-    .faq-item.open .faq-answer {
-      max-height: 500px;
-      padding: 0 24px 20px;
+    .qa-card.open .qa-body {
+      max-height: 600px;
+      padding: 0 20px 18px;
     }
-    .faq-answer strong {
-      color: var(--text-main);
-    }
-    .faq-answer ul {
-      margin: 10px 0 10px 20px;
-    }
-
-    /* Controls & Keyboard Shortcuts Matrix */
-    .table-wrapper {
-      overflow-x: auto;
-      background-color: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      margin-bottom: 90px;
-    }
-    table.custom-table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-      font-size: 0.95rem;
-    }
-    table.custom-table th {
-      background-color: #12161f;
-      padding: 14px 20px;
-      font-weight: 600;
-      color: var(--text-main);
-      border-bottom: 1px solid var(--border-color);
-    }
-    table.custom-table td {
-      padding: 14px 20px;
-      border-bottom: 1px solid var(--border-color);
-      color: var(--text-muted);
-    }
-    table.custom-table tr:last-child td {
-      border-bottom: none;
-    }
-    table.custom-table tr:hover td {
-      background-color: var(--bg-card-hover);
-      color: var(--text-main);
-    }
-    kbd {
-      background-color: #21262d;
-      border: 1px solid #363b42;
-      border-bottom-color: #282e33;
-      border-radius: 4px;
-      box-shadow: inset 0 -1px 0 #282e33;
-      color: #c9d1d9;
-      display: inline-block;
-      font-family: var(--font-mono);
-      font-size: 0.8rem;
-      padding: 2px 6px;
-      font-weight: 500;
-    }
+    .qa-body strong { color: var(--text-bright); }
+    .qa-body code { color: #7ee787; font-family: var(--font-mono); font-size: 12px; }
 
     /* Footer */
     footer {
-      border-top: 1px solid var(--border-color);
-      background-color: #0c0e14;
-      padding: 48px 0 32px;
+      border-top: 1px solid var(--border-main);
+      background-color: #181818;
+      padding: 40px 0 30px;
+      font-size: 12px;
       color: var(--text-muted);
-      font-size: 0.9rem;
     }
-    .footer-content {
+    .footer-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
-      gap: 20px;
-      margin-bottom: 24px;
+      gap: 16px;
+      margin-bottom: 20px;
     }
-    .footer-links {
+    .footer-nav {
       display: flex;
-      gap: 20px;
+      gap: 18px;
       list-style: none;
     }
-    .footer-links a {
+    .footer-nav a {
       color: var(--text-muted);
       text-decoration: none;
-      transition: color 0.2s;
+      transition: color 0.15s;
     }
-    .footer-links a:hover {
-      color: var(--accent-emerald);
-    }
-
-    @media (max-width: 768px) {
-      .hero h1 { font-size: 2.3rem; }
-      .nav-links { display: none; }
-      .guide-section { padding: 24px 16px; }
-      .guide-tabs { flex-wrap: wrap; }
+    .footer-nav a:hover {
+      color: var(--git-trunk);
     }
   </style>
 </head>
 <body>
 
-  <!-- Ambient background glow effects -->
-  <div class="glow-sphere glow-1"></div>
-  <div class="glow-sphere glow-2"></div>
+  <!-- Background Living Branch Canvas Spine -->
+  <canvas id="graph-bg-canvas"></canvas>
 
-  <!-- Header -->
-  <header>
-    <div class="nav-container">
-      <a href="#" class="brand">
-        <img src="resources/icon.png" alt="BetterGitGraph" />
+  <!-- Top Floating HUD Bar -->
+  <header class="top-hud-bar">
+    <div class="hud-left">
+      <a href="#" class="brand-pill">
+        <img src="resources/icon.png" alt="BetterGitGraph Logo" />
         <span>BetterGitGraph</span>
       </a>
-      <ul class="nav-links">
-        <li><a href="#features">Features</a></li>
-        <li><a href="#install-guide">Install Guide</a></li>
-        <li><a href="#controls">Controls</a></li>
-        <li><a href="#faq">Q&A / FAQ</a></li>
-        <li><a href="https://github.com/Renoceros/bettergitgraph" target="_blank">GitHub</a></li>
-      </ul>
-      <a href="https://marketplace.visualstudio.com/items?itemName=Renoceros.bettergitgraph" target="_blank" class="btn-cta">
-        ⚡ Install Extension
-      </a>
+      <div class="stats-hud">
+        <span class="count-emerald">142</span> commits &bull; <span class="count-blue">12</span> branches
+      </div>
     </div>
+    <ul class="hud-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#demo">Live Sandbox</a></li>
+      <li><a href="#install-guide">Install Guide</a></li>
+      <li><a href="#controls">Shortcuts</a></li>
+      <li><a href="#qa">Q&A / FAQ</a></li>
+      <li><a href="https://github.com/Renoceros/bettergitgraph" target="_blank">GitHub</a></li>
+    </ul>
+    <a href="https://marketplace.visualstudio.com/items?itemName=Renoceros.bettergitgraph" target="_blank" class="btn-install">
+      ⚡ Install v1.3.2
+    </a>
   </header>
 
-  <!-- Hero Section -->
-  <main class="container">
-    <section class="hero">
-      <div class="badge-pill">
-        ✨ Version 1.3.2 is live &bull; 100% Local-First
+  <div class="content-container">
+    <!-- Hero Section -->
+    <section class="hero-section">
+      <div class="version-tag">
+        ● LIVE v1.3.2 &bull; 100% LOCAL-FIRST
       </div>
-      <h1>
+      <h1 class="hero-title">
         The Git Visualizer<br />
-        <span class="gradient">VS Code Deserves.</span>
+        <span class="trunk-gradient">VS Code Deserves.</span>
       </h1>
-      <p class="lead">
-        A fast, modern, node-based Git visualization and commit studio for VS Code. Experience fluid Bézier branch curves, deterministic colors, one-click staging, and two-stage safety guardrails.
+      <p class="hero-subtitle">
+        Fluid Bézier topology, deterministic 32-bit branch hashing, commit staging studio, and destructive two-stage safety guardrails.
       </p>
 
-      <div class="hero-actions">
-        <a href="https://marketplace.visualstudio.com/items?itemName=Renoceros.bettergitgraph" target="_blank" class="btn-cta">
-          Install from Marketplace
+      <div class="hero-cta-row">
+        <a href="https://marketplace.visualstudio.com/items?itemName=Renoceros.bettergitgraph" target="_blank" class="btn-hero-primary">
+          📦 Install from Marketplace
         </a>
-        <a href="#install-guide" class="btn-secondary">
-          📖 Installation & Q&A Guide
+        <a href="#install-guide" class="btn-hero-secondary">
+          📖 Setup & Prerequisites Guide
         </a>
       </div>
 
-      <!-- Quick Command Box -->
-      <div>
-        <div class="quick-cmd-box" onclick="copyInstallCmd()" title="Click to copy quick install command">
-          <span>ext install Renoceros.bettergitgraph</span>
-          <span class="copy-icon" id="copy-status">📋 Copy</span>
-        </div>
+      <div class="cli-install-box" onclick="copyInstallCmd()" title="Click to copy quick install command">
+        <span>$ code --install-extension Renoceros.bettergitgraph</span>
+        <span class="copy-pill" id="copy-btn-label">Copy</span>
       </div>
 
-      <!-- Interactive Screenshot Showcase -->
-      <div class="showcase-wrapper">
-        <div class="showcase-tabs">
-          <button class="showcase-tab active" onclick="switchShowcase('main', this)">🖥️ Graph & Timeline</button>
-          <button class="showcase-tab" onclick="switchShowcase('search', this)">🔍 Smart Filter & Search</button>
-          <button class="showcase-tab" onclick="switchShowcase('author', this)">👤 Author & Tag Matrix</button>
+      <!-- Interactive Mini Graph Sandbox -->
+      <div id="demo" class="sandbox-frame">
+        <div class="sandbox-header">
+          <div class="sandbox-window-dots">
+            <div class="dot dot-red"></div>
+            <div class="dot dot-yellow"></div>
+            <div class="dot dot-green"></div>
+          </div>
+          <div style="font-family: var(--font-mono); color: var(--text-muted); font-size: 11px;">
+            BetterGitGraph &mdash; Interactive Live Canvas Demo (Click nodes & drag)
+          </div>
+          <div style="color: var(--git-trunk); font-size: 11px; font-weight: 600;">
+            ● Active
+          </div>
         </div>
-        <div class="showcase-img-container">
-          <img id="showcase-display" src="resources/page_example.jpeg" alt="BetterGitGraph Main Screen" class="showcase-img" />
+
+        <div class="sandbox-toolbar">
+          <input type="text" id="sandbox-search" class="mock-search-input" placeholder="Search commits (@author, #branch)..." oninput="filterSandbox(this.value)" />
+          <span class="mock-prefix-chip" onclick="setSearchFilter('@renoce')">@renoce</span>
+          <span class="mock-prefix-chip" onclick="setSearchFilter('#feature/bezier')">#feature/bezier</span>
+          <span class="mock-prefix-chip" onclick="setSearchFilter('is:pr')">is:pr</span>
+          <span class="mock-prefix-chip" onclick="setSearchFilter('is:wip')">is:wip</span>
+          <span class="mock-prefix-chip" onclick="resetSandboxSearch()">Clear</span>
+        </div>
+
+        <div class="sandbox-canvas-area" id="sandbox-container">
+          <canvas id="interactive-demo-canvas"></canvas>
         </div>
       </div>
     </section>
 
-    <!-- Features Section -->
+    <!-- Plaque Feature Cards Section -->
     <section id="features">
-      <div class="section-title">
-        <h2>Engineered for Clarity, Speed & Safety</h2>
-        <p>Say goodbye to flickering branch colors and rigid tabular logs. BetterGitGraph reimagines Git visualization for developer productivity.</p>
+      <div class="section-head">
+        <h2>Designed to Mirror Git Reality</h2>
+        <p>Engineered with pixel-perfect attention to DAG mathematics, typography, and developer workflows.</p>
       </div>
 
-      <div class="feature-grid">
-        <div class="feature-card">
-          <div class="feature-icon icon-emerald">🌿</div>
-          <h3>Central Trunk & Bézier Topology</h3>
-          <p>The <code>main</code> branch forms a prominent central spinal trunk, while feature branches branch out as vines and seamlessly merge back without chaotic line crossings.</p>
+      <div class="plaque-grid">
+        <!-- Feature 1 -->
+        <div class="plaque-card">
+          <div class="plaque-notch"></div>
+          <div class="plaque-header-row">
+            <span class="plaque-pill pill-initial">TRUNK TOPOLOGY</span>
+            <span class="plaque-hash">7.0px Spine</span>
+          </div>
+          <h3 class="plaque-title">Central Trunk & Bézier Vines</h3>
+          <p class="plaque-desc">The <code>main</code> branch serves as a solid unbroken spine. Feature branches curve gracefully outward and merge back with zero line tangles.</p>
+          <div class="plaque-footer">
+            <span>Branch: main</span>
+            <span style="color: var(--git-trunk);">✓ Deterministic</span>
+          </div>
         </div>
 
-        <div class="feature-card">
-          <div class="feature-icon icon-blue">🎨</div>
-          <h3>Deterministic 32-bit Branch Colors</h3>
-          <p>Branch hues are calculated via FNV-1a hashing. The same branch name will always produce the exact same color on every session and computer.</p>
+        <!-- Feature 2 -->
+        <div class="plaque-card">
+          <div class="plaque-notch"></div>
+          <div class="plaque-header-row">
+            <span class="plaque-pill pill-wip">STAGING STUDIO</span>
+            <span class="plaque-hash">HEAD (WIP)</span>
+          </div>
+          <h3 class="plaque-title">WIP Node & Commit Drawer</h3>
+          <p class="plaque-desc">Uncommitted working tree changes appear as a glowing dashed WIP node above <code>HEAD</code>. Click it to stage files, view diffs, and commit with Conventional chips.</p>
+          <div class="plaque-footer">
+            <span>Staging: 3 staged, 1 unstaged</span>
+            <span style="color: var(--git-trunk);">● Live</span>
+          </div>
         </div>
 
-        <div class="feature-card">
-          <div class="feature-icon icon-purple">✍️</div>
-          <h3>WIP Node & Commit Studio</h3>
-          <p>Uncommitted modifications appear as a glowing dashed WIP node above <code>HEAD</code>. Click it to slide out the staging drawer with Conventional Commit chips, diff viewer, and commit/amend tools.</p>
+        <!-- Feature 3 -->
+        <div class="plaque-card">
+          <div class="plaque-notch"></div>
+          <div class="plaque-header-row">
+            <span class="plaque-pill pill-danger">SAFETY GUARDRAILS</span>
+            <span class="plaque-hash">2-Stage Modal</span>
+          </div>
+          <h3 class="plaque-title">Two-Stage Confirmation</h3>
+          <p class="plaque-desc">High-risk actions (Hard Reset, Force Push, Force Branch Delete) require a 2-stage verification modal with plain-English impact explanations.</p>
+          <div class="plaque-footer">
+            <span>Setting: twoStageConfirmation</span>
+            <span style="color: var(--git-red);">🛡️ Safe</span>
+          </div>
         </div>
 
-        <div class="feature-card">
-          <div class="feature-icon icon-red">🛡️</div>
-          <h3>2-Stage Destructive Guardrails</h3>
-          <p>High-risk actions (Hard Reset, Force Push, Force Delete Branch) require a 2-stage verification flow with plain-English impact warnings so you never lose work by accident.</p>
+        <!-- Feature 4 -->
+        <div class="plaque-card">
+          <div class="plaque-notch"></div>
+          <div class="plaque-header-row">
+            <span class="plaque-pill pill-pr">PR #128 ⬡</span>
+            <span class="plaque-hash">Hexagon Node</span>
+          </div>
+          <h3 class="plaque-title">First-Class PR & Issue Geometry</h3>
+          <p class="plaque-desc">Pull requests render as distinct purple hexagons (⬡) and issues as green shields (⛉), providing instantaneous cognitive differentiation on the graph.</p>
+          <div class="plaque-footer">
+            <span>GitHub &bull; GitLab &bull; Azure</span>
+            <span style="color: var(--git-purple);">🔀 1-Click Link</span>
+          </div>
         </div>
 
-        <div class="feature-card">
-          <div class="feature-icon icon-yellow">🛰️</div>
-          <h3>Remote Divergence Radar</h3>
-          <p>Real-time <code>↑N ↓M</code> divergence pills rendered on branch plaques let you know at a glance how many commits you are ahead or behind your remote.</p>
+        <!-- Feature 5 -->
+        <div class="plaque-card">
+          <div class="plaque-notch"></div>
+          <div class="plaque-header-row">
+            <span class="plaque-pill pill-sync">SYNC RADAR</span>
+            <span class="plaque-hash">↑2 ↓1</span>
+          </div>
+          <h3 class="plaque-title">Remote Divergence Tracking</h3>
+          <p class="plaque-desc">Live emerald ahead (<code>↑N</code>) and orange behind (<code>↓M</code>) badges appear directly on branch plaques, so you always know your sync status.</p>
+          <div class="plaque-footer">
+            <span>Origin: origin/feature</span>
+            <span style="color: var(--git-blue);">🛰️ Auto-Fetch</span>
+          </div>
         </div>
 
-        <div class="feature-card">
-          <div class="feature-icon icon-emerald">⬡</div>
-          <h3>First-Class PR & Issue Geometry</h3>
-          <p>Pull requests render as purple rounded hexagons (⬡) and issues as green shields (⛉), providing immediate geometric differentiation on the DAG.</p>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon icon-blue">🖼️</div>
-          <h3>Export High-Res SVG & PNG Maps</h3>
-          <p>Right-click the canvas background to instantly generate and download vector <code>.svg</code> or high-res <code>.png</code> maps of your repository for design reviews and documentation.</p>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon icon-purple">🔒</div>
-          <h3>100% Local-First & Zero Telemetry</h3>
-          <p>Runs entirely inside your local VS Code process with strict Content Security Policies. Zero external API pings, zero tracking, zero code uploaded anywhere.</p>
+        <!-- Feature 6 -->
+        <div class="plaque-card">
+          <div class="plaque-notch"></div>
+          <div class="plaque-header-row">
+            <span class="plaque-pill pill-initial">VECTOR EXPORT</span>
+            <span class="plaque-hash">SVG & PNG</span>
+          </div>
+          <h3 class="plaque-title">High-Res Map Exporter</h3>
+          <p class="plaque-desc">Right-click the canvas background to generate self-contained vector <code>.svg</code> or high-DPI <code>.png</code> repo maps with embedded styles and custom stroke widths.</p>
+          <div class="plaque-footer">
+            <span>Figma &bull; Docs &bull; PRs</span>
+            <span style="color: var(--git-trunk);">📷 Vector</span>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- Installation & Setup Guide -->
+    <!-- Installation & Setup Guide Section -->
     <section id="install-guide">
-      <div class="section-title">
-        <h2>🛠️ Complete Installation & Setup Guide</h2>
-        <p>Everything you need to get started with BetterGitGraph across Windows, macOS, and Linux.</p>
+      <div class="section-head">
+        <h2>🛠️ Installation & Prerequisites Guide</h2>
+        <p>Step-by-step installation instructions for every operating system and workflow.</p>
       </div>
 
-      <div class="guide-section">
-        <div class="guide-tabs">
-          <button class="guide-tab-btn active" onclick="switchGuide('vscode', this)">VS Code Marketplace</button>
-          <button class="guide-tab-btn" onclick="switchGuide('prereqs', this)">System Prerequisites (Git & CLI)</button>
-          <button class="guide-tab-btn" onclick="switchGuide('offline', this)">Offline VSIX / Manual</button>
+      <div class="guide-hub">
+        <div class="guide-tabs-bar">
+          <button class="tab-btn active" onclick="switchInstallTab('marketplace', this)">VS Code Marketplace</button>
+          <button class="tab-btn" onclick="switchInstallTab('prereqs', this)">System Prerequisites (Git PATH)</button>
+          <button class="tab-btn" onclick="switchInstallTab('offline', this)">Offline VSIX / Manual</button>
         </div>
 
-        <!-- Panel 1: VS Code -->
-        <div id="guide-panel-vscode" class="guide-content-panel active">
-          <ol class="step-list">
-            <li class="step-item">
-              <div class="step-number">1</div>
-              <div class="step-body">
-                <h4>Open Visual Studio Code</h4>
-                <p>Ensure you are running VS Code version <strong>1.90.0</strong> or newer.</p>
+        <!-- Panel 1: Marketplace -->
+        <div id="tab-marketplace" class="tab-panel active">
+          <div class="install-step">
+            <div class="step-badge">1</div>
+            <div class="step-content">
+              <h4>Open Visual Studio Code</h4>
+              <p>BetterGitGraph requires VS Code <strong>1.90.0</strong> or newer.</p>
+            </div>
+          </div>
+          <div class="install-step">
+            <div class="step-badge">2</div>
+            <div class="step-content">
+              <h4>Quick Open Install</h4>
+              <p>Press <kbd>Cmd+P</kbd> (macOS) or <kbd>Ctrl+P</kbd> (Windows/Linux) and paste:</p>
+              <div class="terminal-box">
+                <code>ext install Renoceros.bettergitgraph</code>
+                <button class="btn-copy-code" onclick="copyPlain('ext install Renoceros.bettergitgraph')">Copy</button>
               </div>
-            </li>
-            <li class="step-item">
-              <div class="step-number">2</div>
-              <div class="step-body">
-                <h4>Open Quick Open / Extensions View</h4>
-                <p>Press <kbd>Cmd+P</kbd> (macOS) or <kbd>Ctrl+P</kbd> (Windows/Linux), paste the installation command, and press <kbd>Enter</kbd>:</p>
-                <div class="code-block">
-                  <code>ext install Renoceros.bettergitgraph</code>
-                  <button class="copy-btn" onclick="copyText('ext install Renoceros.bettergitgraph')">Copy</button>
-                </div>
-              </div>
-            </li>
-            <li class="step-item">
-              <div class="step-number">3</div>
-              <div class="step-body">
-                <h4>Launch BetterGitGraph</h4>
-                <p>Open any folder containing a Git repository and press <kbd>Cmd+Ctrl+G</kbd> (macOS) or <kbd>Ctrl+Alt+G</kbd> (Windows/Linux), or click the BetterGitGraph icon in the top right editor toolbar.</p>
-              </div>
-            </li>
-          </ol>
+            </div>
+          </div>
+          <div class="install-step">
+            <div class="step-badge">3</div>
+            <div class="step-content">
+              <h4>Open Your Graph</h4>
+              <p>Press <kbd>Cmd+Ctrl+G</kbd> (macOS) or <kbd>Ctrl+Alt+G</kbd> (Windows/Linux), or click the BetterGitGraph icon in the top right editor tab.</p>
+            </div>
+          </div>
         </div>
 
         <!-- Panel 2: Prerequisites -->
-        <div id="guide-panel-prereqs" class="guide-content-panel">
-          <ol class="step-list">
-            <li class="step-item">
-              <div class="step-number">1</div>
-              <div class="step-body">
-                <h4>Install Git CLI</h4>
-                <p>BetterGitGraph uses your system's native Git binary for maximum speed and compatibility. Install Git if not already available:</p>
-                <div class="code-block" style="margin-bottom: 8px;">
-                  <code># macOS (Homebrew)<br />brew install git</code>
-                  <button class="copy-btn" onclick="copyText('brew install git')">Copy</button>
-                </div>
-                <div class="code-block" style="margin-bottom: 8px;">
-                  <code># Windows (Winget)<br />winget install --id Git.Git -e --source winget</code>
-                  <button class="copy-btn" onclick="copyText('winget install --id Git.Git -e --source winget')">Copy</button>
-                </div>
-                <div class="code-block">
-                  <code># Linux (Debian / Ubuntu)<br />sudo apt update && sudo apt install git</code>
-                  <button class="copy-btn" onclick="copyText('sudo apt update && sudo apt install git')">Copy</button>
-                </div>
+        <div id="tab-prereqs" class="tab-panel">
+          <div class="install-step">
+            <div class="step-badge">1</div>
+            <div class="step-content">
+              <h4>Install Git CLI</h4>
+              <p>BetterGitGraph interfaces with your local Git binary directly so all your SSH keys and GPG signatures are preserved:</p>
+              <div class="terminal-box">
+                <code># macOS (Homebrew)<br />brew install git</code>
+                <button class="btn-copy-code" onclick="copyPlain('brew install git')">Copy</button>
               </div>
-            </li>
-            <li class="step-item">
-              <div class="step-number">2</div>
-              <div class="step-body">
-                <h4>Configure Git Identity</h4>
-                <p>Ensure your Git username and email are configured so commits from the Commit Studio are properly attributed:</p>
-                <div class="code-block">
-                  <code>git config --global user.name "Your Name"<br />git config --global user.email "you@example.com"</code>
-                  <button class="copy-btn" onclick="copyText('git config --global user.name \"Your Name\"\ngit config --global user.email \"you@example.com\"')">Copy</button>
-                </div>
+              <div class="terminal-box">
+                <code># Windows (Winget)<br />winget install --id Git.Git -e --source winget</code>
+                <button class="btn-copy-code" onclick="copyPlain('winget install --id Git.Git -e --source winget')">Copy</button>
               </div>
-            </li>
-            <li class="step-item">
-              <div class="step-number">3</div>
-              <div class="step-body">
-                <h4>GitHub CLI / Remote Authentication (Optional)</h4>
-                <p>To enable seamless 1-click Pull Request creation and remote syncing, authenticate your remote credentials:</p>
-                <div class="code-block">
-                  <code>gh auth login</code>
-                  <button class="copy-btn" onclick="copyText('gh auth login')">Copy</button>
-                </div>
+              <div class="terminal-box">
+                <code># Linux (Debian / Ubuntu)<br />sudo apt update && sudo apt install git</code>
+                <button class="btn-copy-code" onclick="copyPlain('sudo apt update && sudo apt install git')">Copy</button>
               </div>
-            </li>
-          </ol>
+            </div>
+          </div>
+          <div class="install-step">
+            <div class="step-badge">2</div>
+            <div class="step-content">
+              <h4>Configure Git Identity</h4>
+              <p>Set your global commit author name and email:</p>
+              <div class="terminal-box">
+                <code>git config --global user.name "Your Name"<br />git config --global user.email "you@example.com"</code>
+                <button class="btn-copy-code" onclick="copyPlain('git config --global user.name \"Your Name\"\ngit config --global user.email \"you@example.com\"')">Copy</button>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- Panel 3: Offline VSIX -->
-        <div id="guide-panel-offline" class="guide-content-panel">
-          <ol class="step-list">
-            <li class="step-item">
-              <div class="step-number">1</div>
-              <div class="step-body">
-                <h4>Download the latest VSIX package</h4>
-                <p>Download <code>bettergitgraph-1.3.2.vsix</code> from the <a href="https://github.com/Renoceros/bettergitgraph/releases" target="_blank" style="color: var(--accent-blue);">GitHub Releases Page</a>.</p>
+        <!-- Panel 3: Offline -->
+        <div id="tab-offline" class="tab-panel">
+          <div class="install-step">
+            <div class="step-badge">1</div>
+            <div class="step-content">
+              <h4>Download VSIX</h4>
+              <p>Grab <code>bettergitgraph-1.3.2.vsix</code> from our <a href="https://github.com/Renoceros/bettergitgraph/releases" target="_blank" style="color: var(--git-blue);">GitHub Releases Page</a>.</p>
+            </div>
+          </div>
+          <div class="install-step">
+            <div class="step-badge">2</div>
+            <div class="step-content">
+              <h4>Install via CLI</h4>
+              <div class="terminal-box">
+                <code>code --install-extension bettergitgraph-1.3.2.vsix</code>
+                <button class="btn-copy-code" onclick="copyPlain('code --install-extension bettergitgraph-1.3.2.vsix')">Copy</button>
               </div>
-            </li>
-            <li class="step-item">
-              <div class="step-number">2</div>
-              <div class="step-body">
-                <h4>Install via Terminal</h4>
-                <p>Run the VS Code CLI install command:</p>
-                <div class="code-block">
-                  <code>code --install-extension bettergitgraph-1.3.2.vsix</code>
-                  <button class="copy-btn" onclick="copyText('code --install-extension bettergitgraph-1.3.2.vsix')">Copy</button>
-                </div>
-              </div>
-            </li>
-            <li class="step-item">
-              <div class="step-number">3</div>
-              <div class="step-body">
-                <h4>Or Install via VS Code GUI</h4>
-                <p>Open VS Code $\rightarrow$ go to Extensions view (<kbd>Ctrl+Shift+X</kbd>) $\rightarrow$ click the <code>...</code> menu in the top right $\rightarrow$ choose <strong>Install from VSIX...</strong>.</p>
-              </div>
-            </li>
-          </ol>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- Controls & Keybindings Table -->
     <section id="controls">
-      <div class="section-title">
-        <h2>⌨️ Controls & Keybindings Cheat Sheet</h2>
-        <p>Fluid navigation and quick actions designed for developer ergonomics.</p>
+      <div class="section-head">
+        <h2>⌨️ Controls & Keybindings</h2>
+        <p>Ergonomic shortcuts designed for high-velocity Git workflows.</p>
       </div>
 
-      <div class="table-wrapper">
-        <table class="custom-table">
+      <div class="controls-table-wrapper">
+        <table class="kb-table">
           <thead>
             <tr>
               <th>Action</th>
               <th>macOS Shortcut</th>
-              <th>Win / Linux Shortcut</th>
-              <th>Behavior</th>
+              <th>Windows / Linux</th>
+              <th>Description</th>
             </tr>
           </thead>
           <tbody>
@@ -896,263 +1021,470 @@
               <td><strong>Open BetterGitGraph</strong></td>
               <td><kbd>Cmd</kbd> + <kbd>Ctrl</kbd> + <kbd>G</kbd></td>
               <td><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>G</kbd></td>
-              <td>Opens or brings the interactive graph tab to focus</td>
+              <td>Opens or focuses the graph view</td>
             </tr>
             <tr>
-              <td><strong>Pan Canvas</strong></td>
+              <td><strong>Pan Camera</strong></td>
               <td><kbd>Click</kbd> + <kbd>Drag</kbd></td>
               <td><kbd>Click</kbd> + <kbd>Drag</kbd></td>
-              <td>Smoothly pan across repository history</td>
+              <td>Smooth canvas panning across history</td>
             </tr>
             <tr>
-              <td><strong>Zoom In / Out</strong></td>
-              <td><kbd>Scroll Wheel</kbd> / <kbd>Pinch</kbd></td>
-              <td><kbd>Scroll Wheel</kbd> / <kbd>Pinch</kbd></td>
-              <td>Cursor-centered zoom from overview to node cards</td>
+              <td><strong>Cursor Zoom</strong></td>
+              <td><kbd>Wheel</kbd> / <kbd>Pinch</kbd></td>
+              <td><kbd>Wheel</kbd> / <kbd>Pinch</kbd></td>
+              <td>Zoom centered at cursor position</td>
             </tr>
             <tr>
               <td><strong>Center Active HEAD</strong></td>
-              <td><kbd>Double Click</kbd> <em>(Canvas)</em></td>
-              <td><kbd>Double Click</kbd> <em>(Canvas)</em></td>
-              <td>Instantly centers the camera on the active HEAD commit</td>
+              <td><kbd>Double Click</kbd></td>
+              <td><kbd>Double Click</kbd></td>
+              <td>Instantly centers on active branch tip</td>
             </tr>
             <tr>
               <td><strong>Fit to Screen</strong></td>
               <td>Click <kbd>⛶ Fit</kbd></td>
               <td>Click <kbd>⛶ Fit</kbd></td>
-              <td>Auto-scales graph to fit all rendered commits in window</td>
+              <td>Auto-scales graph to fit all nodes</td>
             </tr>
             <tr>
               <td><strong>Inspect Commit Card</strong></td>
               <td><kbd>Left Click</kbd> <em>(Node)</em></td>
               <td><kbd>Left Click</kbd> <em>(Node)</em></td>
-              <td>Opens floating details card with files, parents & diff links</td>
+              <td>Opens details popup with files & diffs</td>
             </tr>
             <tr>
               <td><strong>Open Staging Studio</strong></td>
               <td><kbd>Left Click</kbd> <em>(WIP Node)</em></td>
               <td><kbd>Left Click</kbd> <em>(WIP Node)</em></td>
-              <td>Slides out commit composer with file checkboxes & Conventional chips</td>
+              <td>Slides out commit staging composer</td>
             </tr>
             <tr>
               <td><strong>Git Operations Menu</strong></td>
               <td><kbd>Right Click</kbd> <em>(Node)</em></td>
               <td><kbd>Right Click</kbd> <em>(Node)</em></td>
-              <td>Context menu for Checkout, Branch, Tag, Revert, Reset, PR</td>
-            </tr>
-            <tr>
-              <td><strong>Canvas Export Menu</strong></td>
-              <td><kbd>Right Click</kbd> <em>(Background)</em></td>
-              <td><kbd>Right Click</kbd> <em>(Background)</em></td>
-              <td>Export full repository map as standalone SVG or high-res PNG</td>
+              <td>Context menu for Checkout, Branch, Revert, Reset, PR</td>
             </tr>
           </tbody>
         </table>
       </div>
     </section>
 
-    <!-- Q&A / FAQ Section -->
-    <section id="faq">
-      <div class="section-title">
+    <!-- Q&A Section -->
+    <section id="qa">
+      <div class="section-head">
         <h2>❓ Frequently Asked Questions & Troubleshooting</h2>
-        <p>Find answers to common questions about requirements, remote configuration, and features.</p>
+        <p>Everything you need to know about compatibility, security, and Git operations.</p>
       </div>
 
-      <div class="faq-search-wrapper">
-        <span class="faq-search-icon">🔍</span>
-        <input type="text" id="faq-search" class="faq-search-input" placeholder="Search questions (e.g. Git, PR, Staging, Reset, Colors)..." oninput="filterFaq()" />
+      <div class="qa-search-box">
+        <span class="qa-icon">🔍</span>
+        <input type="text" id="qa-search-input" class="qa-input" placeholder="Search questions (e.g. Git, PR, Staging, Reset, Colors)..." oninput="filterQA(this.value)" />
       </div>
 
-      <div class="faq-list" id="faq-container">
-        <!-- Item 1 -->
-        <div class="faq-item">
-          <div class="faq-question" onclick="toggleFaq(this)">
+      <div class="qa-accordion-list" id="qa-list">
+        <div class="qa-card">
+          <div class="qa-header" onclick="toggleQA(this)">
             <span>What do I need to install before using BetterGitGraph?</span>
-            <span class="faq-arrow">▼</span>
+            <span class="qa-chevron">▼</span>
           </div>
-          <div class="faq-answer">
-            <p>You only need two things:</p>
-            <ul>
-              <li><strong>Visual Studio Code</strong> version <code>1.90.0</code> or newer (or compatible forks like VSCodium, Cursor).</li>
-              <li><strong>Git CLI</strong> (version <code>2.20.0</code> or newer) installed and accessible in your system <code>PATH</code>.</li>
-            </ul>
-            <p>BetterGitGraph uses your local Git binary directly so it respects all your existing SSH keys, GPG signing keys, Git aliases, and repository configurations.</p>
+          <div class="qa-body">
+            <p>You only need <strong>VS Code</strong> (version <code>1.90.0</code> or newer) and the <strong>Git CLI</strong> installed on your machine. BetterGitGraph executes native Git commands locally through simple-git, preserving all your SSH keys and GPG signing identities.</p>
           </div>
         </div>
 
-        <!-- Item 2 -->
-        <div class="faq-item">
-          <div class="faq-question" onclick="toggleFaq(this)">
-            <span>Do I need GitHub CLI (<code>gh</code>) to create Pull Requests?</span>
-            <span class="faq-arrow">▼</span>
+        <div class="qa-card">
+          <div class="qa-header" onclick="toggleQA(this)">
+            <span>Do I need the GitHub CLI (<code>gh</code>) to create Pull Requests?</span>
+            <span class="qa-chevron">▼</span>
           </div>
-          <div class="faq-answer">
-            <p><strong>No!</strong> BetterGitGraph automatically detects your repository's remote provider (GitHub, GitLab, Bitbucket, or Azure DevOps) and generates direct web comparison URLs. Clicking <em>"Raise PR / Create MR"</em> opens your default browser directly to the pull request creation page with base and head branches pre-selected.</p>
+          <div class="qa-body">
+            <p><strong>No!</strong> BetterGitGraph parses your origin remote URL (GitHub, GitLab, Bitbucket, Azure DevOps) and generates direct web comparison URLs. Clicking <em>"Raise PR / Create MR"</em> opens your browser directly with base and head branches pre-filled.</p>
           </div>
         </div>
 
-        <!-- Item 3 -->
-        <div class="faq-item">
-          <div class="faq-question" onclick="toggleFaq(this)">
+        <div class="qa-card">
+          <div class="qa-header" onclick="toggleQA(this)">
             <span>How does the Commit & Staging Studio work?</span>
-            <span class="faq-arrow">▼</span>
+            <span class="qa-chevron">▼</span>
           </div>
-          <div class="faq-answer">
-            <p>Whenever you have modified or untracked files in your working directory, BetterGitGraph renders an emerald dashed <strong>WIP (Work In Progress) node</strong> attached to your current <code>HEAD</code> commit. Clicking this node slides out the Commit Drawer, allowing you to:</p>
-            <ul>
-              <li>Check/uncheck files to stage (<code>git add</code>) or unstage (<code>git restore --staged</code>).</li>
-              <li>Click any file name to view inline VS Code diffs.</li>
-              <li>Click Conventional Commit chips (<code>feat:</code>, <code>fix:</code>, <code>refactor:</code>, etc.) for standardized commit messages.</li>
-              <li>Commit changes (<kbd>Ctrl+Enter</kbd> / <kbd>Cmd+Enter</kbd>), Commit & Push, or Amend your previous commit.</li>
-            </ul>
+          <div class="qa-body">
+            <p>Whenever uncommitted changes exist, an emerald dashed <strong>WIP node ($\bigodot$)</strong> is attached to <code>HEAD</code>. Clicking it opens the Commit Drawer to stage/unstage files, click diff links, use Conventional Commit chips (<code>feat:</code>, <code>fix:</code>), and commit or amend.</p>
           </div>
         </div>
 
-        <!-- Item 4 -->
-        <div class="faq-item">
-          <div class="faq-question" onclick="toggleFaq(this)">
+        <div class="qa-card">
+          <div class="qa-header" onclick="toggleQA(this)">
             <span>What is the Two-Stage Confirmation guardrail?</span>
-            <span class="faq-arrow">▼</span>
+            <span class="qa-chevron">▼</span>
           </div>
-          <div class="faq-answer">
-            <p>To prevent accidental data loss, destructive Git commands like <strong>Hard Reset</strong> (<code>git reset --hard</code>), <strong>Force Push</strong> (<code>git push --force-with-lease</code>), <strong>Force Delete Branch</strong> (<code>git branch -D</code>), and <strong>Discard File Changes</strong> enforce a 2-stage confirmation modal:</p>
-            <ul>
-              <li><strong>Step 1:</strong> Displays a plain-English explanation of the impact and preview of the exact Git command.</li>
-              <li><strong>Step 2:</strong> Requires an explicit second confirmation on an alert warning stating the action cannot be undone.</li>
-            </ul>
-            <p>You can toggle this in VS Code Settings: <code>bettergitgraph.twoStageConfirmation</code> (default: <code>true</code>).</p>
+          <div class="qa-body">
+            <p>Destructive actions like <strong>Hard Reset</strong>, <strong>Force Push</strong>, and <strong>Force Delete Branch</strong> enforce a 2-stage verification modal with a red warning banner. You can toggle this in settings: <code>bettergitgraph.twoStageConfirmation</code> (default: <code>true</code>).</p>
           </div>
         </div>
 
-        <!-- Item 5 -->
-        <div class="faq-item">
-          <div class="faq-question" onclick="toggleFaq(this)">
-            <span>Why is the main branch thicker than other branches? Can I change the thickness?</span>
-            <span class="faq-arrow">▼</span>
+        <div class="qa-card">
+          <div class="qa-header" onclick="toggleQA(this)">
+            <span>Why is the main branch thicker? Can I customize curve thicknesses?</span>
+            <span class="qa-chevron">▼</span>
           </div>
-          <div class="faq-answer">
-            <p>By default, the central trunk (<code>main</code>/<code>master</code>) is styled with a prominent stroke thickness (<code>7px</code>) to visually anchor your repository tree, while feature branches default to <code>3px</code>. You can customize both in VS Code Settings:</p>
-            <ul>
-              <li><code>bettergitgraph.mainTrunkStrokeWidth</code> (default: <code>7</code>, range: <code>2 - 16</code>)</li>
-              <li><code>bettergitgraph.branchStrokeWidth</code> (default: <code>3</code>, range: <code>1 - 10</code>)</li>
-            </ul>
+          <div class="qa-body">
+            <p>The central trunk defaults to <code>7px</code> and feature branches to <code>3px</code> to visually anchor the tree. Both are fully configurable in VS Code settings via <code>bettergitgraph.mainTrunkStrokeWidth</code> and <code>bettergitgraph.branchStrokeWidth</code>.</p>
           </div>
         </div>
 
-        <!-- Item 6 -->
-        <div class="faq-item">
-          <div class="faq-question" onclick="toggleFaq(this)">
-            <span>How do I export my repository history as an SVG or PNG image?</span>
-            <span class="faq-arrow">▼</span>
+        <div class="qa-card">
+          <div class="qa-header" onclick="toggleQA(this)">
+            <span>Does BetterGitGraph collect telemetry or send code to remote servers?</span>
+            <span class="qa-chevron">▼</span>
           </div>
-          <div class="faq-answer">
-            <p>Right-click anywhere on the empty canvas background to bring up the Canvas Menu, then select <strong>Export as SVG</strong> or <strong>Export as PNG</strong>. SVG exports are self-contained vector XML files with embedded fonts and clip paths suitable for presentations, README files, or Figma boards.</p>
-          </div>
-        </div>
-
-        <!-- Item 7 -->
-        <div class="faq-item">
-          <div class="faq-question" onclick="toggleFaq(this)">
-            <span>Does BetterGitGraph send any code, metrics, or telemetry to external servers?</span>
-            <span class="faq-arrow">▼</span>
-          </div>
-          <div class="faq-answer">
-            <p><strong>Absolutely not.</strong> BetterGitGraph is 100% local-first. It operates under a strict Content Security Policy (<code>default-src 'none'</code>) and makes zero network requests. Your source code and commit history never leave your computer.</p>
-          </div>
-        </div>
-
-        <!-- Item 8 -->
-        <div class="faq-item">
-          <div class="faq-question" onclick="toggleFaq(this)">
-            <span>What if BetterGitGraph says "No Git repository found"?</span>
-            <span class="faq-arrow">▼</span>
-          </div>
-          <div class="faq-answer">
-            <p>Make sure the folder opened in VS Code contains a <code>.git</code> directory. If working in a subfolder or monorepo, open the root repository directory in VS Code, or initialize a new repository via terminal (<code>git init</code>).</p>
+          <div class="qa-body">
+            <p><strong>Zero telemetry.</strong> BetterGitGraph is 100% local-first and operates under a locked-down Content Security Policy with zero external network requests.</p>
           </div>
         </div>
       </div>
     </section>
-  </main>
+  </div>
 
   <!-- Footer -->
   <footer>
-    <div class="container">
-      <div class="footer-content">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <img src="resources/icon.png" width="24" height="24" alt="BetterGitGraph Icon" />
-          <strong style="color: var(--text-main);">BetterGitGraph</strong> &bull; Developed with ❤️ by <a href="https://github.com/Renoceros" target="_blank" style="color: var(--accent-emerald); text-decoration: none;">Renoceros</a>
+    <div class="content-container" style="padding-top: 0; padding-bottom: 0;">
+      <div class="footer-row">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <img src="resources/icon.png" width="22" height="22" alt="BetterGitGraph" />
+          <strong style="color: var(--text-bright);">BetterGitGraph</strong> &bull; Developed with ❤️ by <a href="https://github.com/Renoceros" target="_blank" style="color: var(--git-trunk); text-decoration: none;">Renoceros</a>
         </div>
-        <ul class="footer-links">
+        <ul class="footer-nav">
           <li><a href="https://github.com/Renoceros/bettergitgraph" target="_blank">GitHub</a></li>
           <li><a href="https://marketplace.visualstudio.com/items?itemName=Renoceros.bettergitgraph" target="_blank">Marketplace</a></li>
           <li><a href="https://github.com/Renoceros/bettergitgraph/releases" target="_blank">Releases</a></li>
           <li><a href="https://github.com/Renoceros/bettergitgraph/blob/master/LICENSE" target="_blank">MIT License</a></li>
         </ul>
       </div>
-      <div style="font-size: 0.8rem; color: #6e7681; text-align: center;">
-        &copy; 2026 Renoceros. Open-source software licensed under the MIT License.
+      <div style="color: #666666; font-size: 11px; text-align: center;">
+        &copy; 2026 Renoceros. Open source under the MIT License.
       </div>
     </div>
   </footer>
 
-  <!-- Interactive Scripts -->
+  <!-- Dynamic Living Graph Canvas & Demo Engine -->
   <script>
-    // Tab switching for screenshot showcase
-    function switchShowcase(type, btn) {
-      document.querySelectorAll('.showcase-tab').forEach(t => t.classList.remove('active'));
-      btn.classList.add('active');
-      const img = document.getElementById('showcase-display');
-      if (type === 'main') {
-        img.src = 'resources/page_example.jpeg';
-      } else if (type === 'search') {
-        img.src = 'resources/general_search.jpeg';
-      } else if (type === 'author') {
-        img.src = 'resources/author_tag_search.jpeg';
-      }
-    }
+    // ── 1. Dynamic Background Living Spine Canvas ──────────────────────────────
+    const bgCanvas = document.getElementById('graph-bg-canvas');
+    const bgCtx = bgCanvas.getContext('2d');
 
-    // Tab switching for install guide
-    function switchGuide(panelKey, btn) {
-      document.querySelectorAll('.guide-tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.guide-content-panel').forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      const panel = document.getElementById(`guide-panel-${panelKey}`);
-      if (panel) panel.classList.add('active');
+    function resizeBgCanvas() {
+      bgCanvas.width = window.innerWidth;
+      bgCanvas.height = window.innerHeight;
     }
+    window.addEventListener('resize', resizeBgCanvas);
+    resizeBgCanvas();
 
-    // FAQ Accordion toggle
-    function toggleFaq(questionEl) {
-      const item = questionEl.parentElement;
-      item.classList.toggle('open');
-    }
+    let scrollY = window.scrollY;
+    window.addEventListener('scroll', () => {
+      scrollY = window.scrollY;
+    });
 
-    // FAQ Search Filter
-    function filterFaq() {
-      const q = document.getElementById('faq-search').value.toLowerCase();
-      const items = document.querySelectorAll('.faq-item');
-      items.forEach(item => {
-        const text = item.textContent.toLowerCase();
-        if (text.includes(q)) {
-          item.style.display = 'block';
-        } else {
-          item.style.display = 'none';
+    let pulseTime = 0;
+
+    function drawBgSpine() {
+      bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+
+      const w = bgCanvas.width;
+      const h = bgCanvas.height;
+      const trunkX = w > 900 ? w * 0.15 : 40;
+
+      // Draw subtle background grid dots
+      bgCtx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+      const gridSize = 40;
+      const offsetY = -(scrollY % gridSize);
+      for (let x = 0; x < w; x += gridSize) {
+        for (let y = offsetY; y < h; y += gridSize) {
+          bgCtx.beginPath();
+          bgCtx.arc(x, y, 1, 0, Math.PI * 2);
+          bgCtx.fill();
         }
+      }
+
+      // Draw Central Trunk Spine
+      bgCtx.beginPath();
+      bgCtx.strokeStyle = '#4ec9b0';
+      bgCtx.lineWidth = 6;
+      bgCtx.lineCap = 'round';
+      bgCtx.moveTo(trunkX, 0);
+      bgCtx.lineTo(trunkX, h);
+      bgCtx.stroke();
+
+      // Draw flowing branch vines
+      const branches = [
+        { startY: 120, endY: 340, outX: trunkX + 180, color: '#569cd6' },
+        { startY: 380, endY: 620, outX: trunkX + 260, color: '#8957e5' },
+        { startY: 660, endY: 900, outX: trunkX + 200, color: '#ce9178' },
+      ];
+
+      pulseTime += 0.03;
+
+      branches.forEach(b => {
+        const sy = (b.startY - (scrollY * 0.4)) % (h + 400);
+        const ey = (b.endY - (scrollY * 0.4)) % (h + 400);
+
+        bgCtx.beginPath();
+        bgCtx.strokeStyle = b.color;
+        bgCtx.lineWidth = 3;
+        bgCtx.moveTo(trunkX, sy);
+        bgCtx.bezierCurveTo(b.outX, sy + 60, b.outX, ey - 60, trunkX, ey);
+        bgCtx.stroke();
+
+        // Animated commit pulse along the curve
+        const t = (Math.sin(pulseTime + b.startY) + 1) / 2;
+        const pulseX = (1 - t) * (1 - t) * trunkX + 2 * (1 - t) * t * b.outX + t * t * trunkX;
+        const pulseY = (1 - t) * (1 - t) * sy + 2 * (1 - t) * t * ((sy + ey) / 2) + t * t * ey;
+
+        bgCtx.beginPath();
+        bgCtx.fillStyle = b.color;
+        bgCtx.shadowColor = b.color;
+        bgCtx.shadowBlur = 10;
+        bgCtx.arc(pulseX, pulseY, 4, 0, Math.PI * 2);
+        bgCtx.fill();
+        bgCtx.shadowBlur = 0;
+      });
+
+      requestAnimationFrame(drawBgSpine);
+    }
+    requestAnimationFrame(drawBgSpine);
+
+    // ── 2. Interactive Mini-Graph Sandbox Demo ─────────────────────────────────
+    const demoCanvas = document.getElementById('interactive-demo-canvas');
+    const demoCtx = demoCanvas.getContext('2d');
+    const demoContainer = document.getElementById('sandbox-container');
+
+    let demoWidth = 0;
+    let demoHeight = 0;
+
+    function resizeDemoCanvas() {
+      demoWidth = demoContainer.clientWidth;
+      demoHeight = demoContainer.clientHeight;
+      demoCanvas.width = demoWidth;
+      demoCanvas.height = demoHeight;
+    }
+    window.addEventListener('resize', resizeDemoCanvas);
+    resizeDemoCanvas();
+
+    let demoViewport = { x: 80, y: 50, zoom: 1.0 };
+    let isDragging = false;
+    let dragStart = { x: 0, y: 0 };
+    let hoveredNode = null;
+    let selectedNode = null;
+    let filterQuery = '';
+
+    // Mock Commit Data for Demo
+    const demoNodes = [
+      { id: 'wip', type: 'wip', hash: '__WIP__', branch: 'feature/bezier-engine', author: 'Renoceros', msg: 'WIP: optimize bezier quadratic routing', x: 260, y: 60, color: '#4ec9b0' },
+      { id: 'c5', type: 'pr', prNumber: 128, hash: '7c89f10', branch: 'main', author: 'Renoceros', msg: 'Merge PR #128: Add Conventional Commit Staging Drawer', x: 120, y: 140, color: '#4ec9b0', isMain: true },
+      { id: 'c4', type: 'commit', hash: '5692488', branch: 'feature/staging', author: 'Renoceros', msg: 'feat(drawer): add conventional prefix badge chips', x: 260, y: 220, color: '#8957e5' },
+      { id: 'c3', type: 'issue', issueNumber: 45, hash: '31e4607', branch: 'feature/safety', author: 'Renoceros', msg: 'fix(#45): implement 2-stage confirmation modal', x: 380, y: 300, color: '#238636' },
+      { id: 'c2', type: 'commit', hash: '1f47416', branch: 'main', author: 'Renoceros', msg: 'feat(graph): deterministic 32-bit FNV-1a branch color hashing', x: 120, y: 380, color: '#4ec9b0', isMain: true },
+      { id: 'c1', type: 'initial', hash: '0a1b2c3', branch: 'main', author: 'Renoceros', msg: 'Initial commit: BetterGitGraph engine architecture', x: 120, y: 460, color: '#4ec9b0', isMain: true },
+    ];
+
+    const demoEdges = [
+      { from: 'wip', to: 'c5', color: '#4ec9b0', isMain: false, dashed: true },
+      { from: 'c4', to: 'c5', color: '#8957e5', isMain: false },
+      { from: 'c3', to: 'c4', color: '#238636', isMain: false },
+      { from: 'c5', to: 'c2', color: '#4ec9b0', isMain: true },
+      { from: 'c3', to: 'c2', color: '#238636', isMain: false },
+      { from: 'c2', to: 'c1', color: '#4ec9b0', isMain: true },
+    ];
+
+    function drawDemo() {
+      demoCtx.clearRect(0, 0, demoWidth, demoHeight);
+
+      demoCtx.save();
+      demoCtx.translate(demoViewport.x, demoViewport.y);
+      demoCtx.scale(demoViewport.zoom, demoViewport.zoom);
+
+      // Draw Edges
+      demoEdges.forEach(e => {
+        const n1 = demoNodes.find(n => n.id === e.from);
+        const n2 = demoNodes.find(n => n.id === e.to);
+        if (!n1 || !n2) return;
+
+        demoCtx.beginPath();
+        demoCtx.strokeStyle = e.color;
+        demoCtx.lineWidth = e.isMain ? 6 : 3;
+        demoCtx.lineCap = 'round';
+        if (e.dashed) demoCtx.setLineDash([4, 4]);
+
+        if (n1.x === n2.x) {
+          demoCtx.moveTo(n1.x, n1.y);
+          demoCtx.lineTo(n2.x, n2.y);
+        } else {
+          demoCtx.moveTo(n1.x, n1.y);
+          demoCtx.bezierCurveTo(n1.x, (n1.y + n2.y) / 2, n2.x, (n1.y + n2.y) / 2, n2.x, n2.y);
+        }
+        demoCtx.stroke();
+        demoCtx.setLineDash([]);
+      });
+
+      // Draw Plaques & Nodes
+      demoNodes.forEach(node => {
+        const isMatch = !filterQuery || 
+          node.msg.toLowerCase().includes(filterQuery) || 
+          node.branch.toLowerCase().includes(filterQuery) ||
+          node.author.toLowerCase().includes(filterQuery);
+
+        demoCtx.save();
+        if (!isMatch) demoCtx.globalAlpha = 0.2;
+
+        // Plaque Card
+        const plaqueX = node.x + 30;
+        const plaqueY = node.y - 20;
+        const plaqueW = 280;
+        const plaqueH = 40;
+
+        // Connector line
+        demoCtx.beginPath();
+        demoCtx.strokeStyle = node.color;
+        demoCtx.setLineDash([2, 2]);
+        demoCtx.moveTo(node.x + 10, node.y);
+        demoCtx.lineTo(plaqueX, node.y);
+        demoCtx.stroke();
+        demoCtx.setLineDash([]);
+
+        // Plaque Box
+        demoCtx.fillStyle = selectedNode === node ? '#333333' : '#252526';
+        demoCtx.strokeStyle = selectedNode === node ? '#4ec9b0' : '#3c3c3c';
+        demoCtx.lineWidth = 1;
+        demoCtx.beginPath();
+        demoCtx.roundRect(plaqueX, plaqueY, plaqueW, plaqueH, 6);
+        demoCtx.fill();
+        demoCtx.stroke();
+
+        // Plaque Text
+        demoCtx.fillStyle = '#ffffff';
+        demoCtx.font = '600 12px Inter, sans-serif';
+        const truncatedMsg = node.msg.length > 32 ? node.msg.slice(0, 32) + '…' : node.msg;
+        demoCtx.fillText(truncatedMsg, plaqueX + 10, plaqueY + 18);
+
+        demoCtx.fillStyle = '#888888';
+        demoCtx.font = '10px "JetBrains Mono", monospace';
+        demoCtx.fillText(`${node.hash.slice(0, 7)} • ${node.author}`, plaqueX + 10, plaqueY + 32);
+
+        // Node Geometry
+        demoCtx.beginPath();
+        if (node.type === 'wip') {
+          demoCtx.arc(node.x, node.y, 10, 0, Math.PI * 2);
+          demoCtx.fillStyle = 'rgba(78, 201, 176, 0.2)';
+          demoCtx.strokeStyle = '#4ec9b0';
+          demoCtx.lineWidth = 2;
+          demoCtx.setLineDash([3, 3]);
+          demoCtx.fill();
+          demoCtx.stroke();
+          demoCtx.setLineDash([]);
+          demoCtx.beginPath();
+          demoCtx.arc(node.x, node.y, 3, 0, Math.PI * 2);
+          demoCtx.fillStyle = '#4ec9b0';
+          demoCtx.fill();
+        } else if (node.type === 'pr') {
+          // Hexagon
+          const r = 10;
+          for (let i = 0; i < 6; i++) {
+            const a = (i * Math.PI) / 3;
+            const hx = node.x + r * Math.cos(a);
+            const hy = node.y + r * Math.sin(a);
+            if (i === 0) demoCtx.moveTo(hx, hy);
+            else demoCtx.lineTo(hx, hy);
+          }
+          demoCtx.closePath();
+          demoCtx.fillStyle = '#8957e5';
+          demoCtx.fill();
+        } else if (node.type === 'issue') {
+          demoCtx.roundRect(node.x - 8, node.y - 8, 16, 16, 3);
+          demoCtx.fillStyle = '#238636';
+          demoCtx.fill();
+        } else if (node.type === 'initial') {
+          demoCtx.arc(node.x, node.y, 9, 0, Math.PI * 2);
+          demoCtx.fillStyle = '#4ec9b0';
+          demoCtx.fill();
+          demoCtx.beginPath();
+          demoCtx.arc(node.x, node.y, 4, 0, Math.PI * 2);
+          demoCtx.fillStyle = '#ffffff';
+          demoCtx.fill();
+        } else {
+          demoCtx.arc(node.x, node.y, 8, 0, Math.PI * 2);
+          demoCtx.fillStyle = node.color;
+          demoCtx.fill();
+        }
+
+        demoCtx.restore();
+      });
+
+      demoCtx.restore();
+      requestAnimationFrame(drawDemo);
+    }
+    requestAnimationFrame(drawDemo);
+
+    // Sandbox Pan Interaction
+    demoContainer.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      dragStart = { x: e.clientX - demoViewport.x, y: e.clientY - demoViewport.y };
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      demoViewport.x = e.clientX - dragStart.x;
+      demoViewport.y = e.clientY - dragStart.y;
+    });
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+    demoContainer.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+      demoViewport.zoom = Math.min(2.0, Math.max(0.5, demoViewport.zoom * zoomFactor));
+    });
+
+    function filterSandbox(val) {
+      filterQuery = val.toLowerCase().replace(/[@#]/g, '');
+    }
+    function setSearchFilter(text) {
+      document.getElementById('sandbox-search').value = text;
+      filterSandbox(text);
+    }
+    function resetSandboxSearch() {
+      document.getElementById('sandbox-search').value = '';
+      filterSandbox('');
+    }
+
+    // ── 3. Tabs & Accordions ──────────────────────────────────────────────────
+    function switchInstallTab(tabKey, btn) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      const p = document.getElementById(`tab-${tabKey}`);
+      if (p) p.classList.add('active');
+    }
+
+    function toggleQA(headerEl) {
+      const card = headerEl.parentElement;
+      card.classList.toggle('open');
+    }
+
+    function filterQA(query) {
+      const q = query.toLowerCase();
+      document.querySelectorAll('.qa-card').forEach(card => {
+        const text = card.textContent.toLowerCase();
+        card.style.display = text.includes(q) ? 'block' : 'none';
       });
     }
 
-    // Copy install command
     function copyInstallCmd() {
-      navigator.clipboard.writeText('ext install Renoceros.bettergitgraph');
-      const status = document.getElementById('copy-status');
-      status.textContent = '✅ Copied!';
-      setTimeout(() => {
-        status.textContent = '📋 Copy';
-      }, 2000);
+      navigator.clipboard.writeText('code --install-extension Renoceros.bettergitgraph');
+      const btn = document.getElementById('copy-btn-label');
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 2000);
     }
 
-    // Generic copy function
-    function copyText(text) {
+    function copyPlain(text) {
       navigator.clipboard.writeText(text);
       alert('Copied to clipboard: ' + text.split('\n')[0]);
     }
