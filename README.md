@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  🌐 <strong><a href="https://renoceros.github.io/bettergitgraph/">Visit the Official BetterGitGraph Landing Page & Q&A Guide →</a></strong>
+  <strong><a href="https://renoceros.github.io/bettergitgraph/">Visit the Official BetterGitGraph Landing Page & Q&A Guide &rarr;</a></strong>
 </p>
 
 <p align="center">
@@ -27,7 +27,7 @@
 
 ---
 
-## ⌨️ Controls, Keybindings & Navigation
+## Controls, Keybindings & Navigation
 
 | Command / Action | Keybinding (macOS) | Keybinding (Win/Linux) | Description |
 |---|---|---|---|
@@ -35,7 +35,7 @@
 | **Pan Canvas** | <kbd>Click</kbd> + <kbd>Drag</kbd> *(Canvas)* | <kbd>Click</kbd> + <kbd>Drag</kbd> *(Canvas)* | Smoothly pan across repository history |
 | **Zoom In / Out** | <kbd>Scroll Wheel</kbd> / <kbd>Pinch</kbd> | <kbd>Scroll Wheel</kbd> / <kbd>Pinch</kbd> | Zoom into detailed plaques or out for wide overview |
 | **Center HEAD Commit** | <kbd>Double Click</kbd> *(Canvas)* | <kbd>Double Click</kbd> *(Canvas)* | Instantly centers viewport on active `HEAD` commit |
-| **Fit to Screen** | Click `⛶ Fit` button | Click `⛶ Fit` button | Dynamically fits all rendered nodes into viewport |
+| **Fit to Screen** | Click `Fit` button | Click `Fit` button | Dynamically fits all rendered nodes into viewport |
 | **Inspect Commit Details** | <kbd>Click</kbd> *(Node / Plaque)* | <kbd>Click</kbd> *(Node / Plaque)* | Opens floating popup with changed files, parent chips & diff viewer |
 | **Context Operations** | <kbd>Right Click</kbd> *(Node)* | <kbd>Right Click</kbd> *(Node)* | Opens Git operations menu (Checkout, Branch, Tag, Revert, Cherry-Pick, Reset) |
 | **Canvas Export Menu** | <kbd>Right Click</kbd> *(Background)* | <kbd>Right Click</kbd> *(Background)* | Export vector SVG / PNG diagram or center graph |
@@ -46,7 +46,7 @@
 
 ---
 
-## 🌟 Overview
+## Overview
 
 Most Git graph extensions render commit history as rigid, tabular text logs with unpredictable, flickering branch colors that change between sessions. 
 
@@ -58,7 +58,7 @@ Most Git graph extensions render commit history as rigid, tabular text logs with
 
 ---
 
-## 🔍 Smart Search & Precision Filtering
+## Smart Search & Precision Filtering
 
 BetterGitGraph provides a powerful multi-attribute search engine with real-time highlighting:
 
@@ -87,22 +87,22 @@ BetterGitGraph provides a powerful multi-attribute search engine with real-time 
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-### 1. ⏱️ Dual Visualization Engines & 4-Direction Matrix
+### 1. Dual Visualization Engines & 4-Direction Matrix
 Switch seamlessly between two purpose-built visualization paradigms across 4 flow orientations (`↓ Top-to-Bottom`, `↑ Bottom-to-Top`, `→ Left-to-Right`, `← Right-to-Left`):
 - **Timeline View:** Commits are ordered strictly chronologically descending (newest at the top, oldest at the bottom). Ideal for understanding the exact sequence of real-time developments across all branches.
 - **Tree View (Topological DAG):** Commits are structured topologically based on parent-child ancestry relationships using Sugiyama layout algorithms. Ideal for inspecting complex feature branches, merges, and octopus merges.
 
-### 2. 🌲 The Trunk & Vine Visual Hierarchy
+### 2. The Trunk & Vine Visual Hierarchy
 - **The Central Trunk:** `main` (or `master`) is visually anchored as the repository's continuous central spine with a prominent, thicker stroke ($5.0\text{px}$).
 - **Feature Vines:** Feature and bugfix branches fork outward into parallel lanes ($2.5\text{px}$) and curve gracefully back into the trunk when merged.
 
-### 3. 🏷️ Orientation-Aware Plaques (No Label Clashing)
+### 3. Orientation-Aware Plaques (No Label Clashing)
 - Each commit's details are housed inside an encapsulated, sleek tag card with a connector notch.
 - In vertical modes (`TB`/`BT`), plaques are placed to the **Right**. In horizontal modes (`LR`/`RL`), plaques are placed **Above or Below** nodes, alternating vertically so horizontal timeline lanes have **zero horizontal label collisions**!
 
-### 4. ⬡ First-Class PR, Issue & WIP Nodes (Geometric Differentiation)
+### 4. First-Class PR, Issue & WIP Nodes (Geometric Differentiation)
 Adhering to data visualization best practices, node types are clearly differentiated by geometry and accent colors:
 
 | Node Type | Geometric Shape | Accent Color | Visual Glyphs | Plaque Badge |
@@ -114,11 +114,11 @@ Adhering to data visualization best practices, node types are clearly differenti
 | **Pull Request (PR)** | **Rounded Hexagon** $\varhexagon$ ($R=11\text{px}$) | `#8957e5` (Purple) | Hexagonal polygon path | `PR #123` (Purple Pill) |
 | **Issue Node** | **Rounded Shield / Square** $\square$ ($R=10\text{px}$) | `#238636` (Green) | Rounded square card | `ISSUE #45` (Green Pill) |
 
-### 5. 🎨 Deterministic & Persistent Color Engine
+### 5. Deterministic & Persistent Color Engine
 - Branch colors are generated deterministically using **32-bit FNV-1a hashing** mapped to an accessible color palette.
 - **Zero Session Drift:** The same branch name will always produce the exact same color, regardless of when it was created, how many other branches exist, or which computer you are using.
 
-### 6. 🪟 Interactive Floating Node Popup & Commit Studio Drawer
+### 6. Interactive Floating Node Popup & Commit Studio Drawer
 Click any commit node or WIP node to display detailed information:
 - **WIP Node Click:** Opens the **Commit & Staging Studio Drawer** to stage/unstage files (`git add`), inspect diffs, use Conventional Commit chips, and commit/push.
 - **Metadata:** Author, email, local/relative timestamp, and branch association.
@@ -126,13 +126,13 @@ Click any commit node or WIP node to display detailed information:
 - **Changed Files List & Live Filter:** Filter changed files with an in-card search input; click any file to open VS Code's diff editor.
 - **Quick Action Bar:** One-click Checkout, Branch creation, Revert, Hard Reset, Raise PR, and Web Link.
 
-### 7. 🖼️ Standalone Repo Map Export (SVG & PNG)
+### 7. Standalone Repo Map Export (SVG & PNG)
 - Right-click anywhere on the canvas background to export your entire repository history as a high-resolution standalone vector `.svg` or `.png` diagram.
 - SVG exports feature embedded CSS styling, `<clipPath>` containment, custom curve stroke widths, and precise font-metric truncation for presentation in browsers, reports, Figma, or documentation.
 
 ---
 
-## 🛠️ Supported Git Operations
+## Supported Git Operations
 
 | Action | Executed Git Command | Beginner Description | Confirmation Required |
 |---|---|---|:---:|
@@ -154,7 +154,7 @@ Click any commit node or WIP node to display detailed information:
 
 ---
 
-## ⚙️ Configuration & Settings
+## Configuration & Settings
 
 Configure BetterGitGraph via VS Code Settings (<kbd>Cmd+,</kbd> / <kbd>Ctrl+,</kbd> $\rightarrow$ search `BetterGitGraph`):
 
@@ -172,7 +172,7 @@ Configure BetterGitGraph via VS Code Settings (<kbd>Cmd+,</kbd> / <kbd>Ctrl+,</k
 
 ---
 
-## 🔒 Security & Privacy
+## Security & Privacy
 
 BetterGitGraph is built strictly as a **local-first** developer tool:
 
@@ -183,9 +183,9 @@ BetterGitGraph is built strictly as a **local-first** developer tool:
 
 ---
 
-## 📦 Installation & Setup
+## Installation & Setup
 
-> 💡 *Looking for a step-by-step walkthrough for Windows, macOS, or Linux prerequisites (Git PATH, GitHub authentication)? Check out our **[Interactive Installation & Q&A Guide](https://renoceros.github.io/bettergitgraph/#install-guide)**.*
+> *Looking for a step-by-step walkthrough for Windows, macOS, or Linux prerequisites (Git PATH, GitHub authentication)? Check out our **[Interactive Installation & Q&A Guide](https://renoceros.github.io/bettergitgraph/#install-guide)**.*
 
 ### Method 1: VS Code Marketplace (Recommended)
 1. Open Visual Studio Code.
@@ -205,8 +205,8 @@ BetterGitGraph is built strictly as a **local-first** developer tool:
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the [MIT License](LICENSE).
 
-Made with ❤️ by [Renoceros](https://github.com/Renoceros).
+Created by [Renoceros](https://github.com/Renoceros).
