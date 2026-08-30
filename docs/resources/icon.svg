@@ -1,0 +1,14 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="128" height="128" rx="28" fill="#1E1E1E"/>
+  <rect x="2" y="2" width="124" height="124" rx="26" stroke="#333333" stroke-width="2"/>
+  <!-- Branch lines -->
+  <path d="M40 96V32" stroke="#4EC9B0" stroke-width="6" stroke-linecap="round"/>
+  <path d="M40 64C40 48 88 56 88 32" stroke="#569CD6" stroke-width="6" stroke-linecap="round"/>
+  <path d="M40 80C40 68 88 72 88 96" stroke="#CE9178" stroke-width="6" stroke-linecap="round"/>
+  <!-- Commit Nodes -->
+  <circle cx="40" cy="32" r="10" fill="#4EC9B0" stroke="#1E1E1E" stroke-width="4"/>
+  <circle cx="40" cy="64" r="8" fill="#4EC9B0" stroke="#1E1E1E" stroke-width="3"/>
+  <circle cx="40" cy="96" r="10" fill="#4EC9B0" stroke="#1E1E1E" stroke-width="4"/>
+  <circle cx="88" cy="32" r="10" fill="#569CD6" stroke="#1E1E1E" stroke-width="4"/>
+  <circle cx="88" cy="96" r="10" fill="#CE9178" stroke="#1E1E1E" stroke-width="4"/>
+</svg>

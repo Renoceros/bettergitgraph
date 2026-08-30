@@ -9,11 +9,16 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Renoceros/bettergitgraph/releases/latest"><img src="https://img.shields.io/badge/Release-v1.2.6-blue.svg" alt="Release Version" /></a>
+  <a href="https://renoceros.github.io/bettergitgraph/"><img src="https://img.shields.io/badge/Documentation-GitHub%20Pages-4ec9b0.svg?logo=github" alt="GitHub Pages Docs" /></a>
+  <a href="https://github.com/Renoceros/bettergitgraph/releases/latest"><img src="https://img.shields.io/badge/Release-v1.3.2-blue.svg" alt="Release Version" /></a>
   <a href="https://marketplace.visualstudio.com/items?itemName=Renoceros.bettergitgraph"><img src="https://img.shields.io/badge/VS%20Code-%5E1.90.0-007ACC.svg?logo=visualstudiocode" alt="VS Code Version" /></a>
   <a href="https://github.com/Renoceros/bettergitgraph/actions"><img src="https://img.shields.io/badge/CI-Passing-brightgreen.svg" alt="CI Status" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" /></a>
   <img src="https://img.shields.io/badge/Privacy-100%25%20Local-success.svg" alt="Privacy Local-First" />
+</p>
+
+<p align="center">
+  🌐 <strong><a href="https://renoceros.github.io/bettergitgraph/">Visit the Official BetterGitGraph Landing Page & Q&A Guide →</a></strong>
 </p>
 
 <p align="center">
@@ -178,7 +183,9 @@ BetterGitGraph is built strictly as a **local-first** developer tool:
 
 ---
 
-## 📦 Installation
+## 📦 Installation & Setup
+
+> 💡 *Looking for a step-by-step walkthrough for Windows, macOS, or Linux prerequisites (Git PATH, GitHub authentication)? Check out our **[Interactive Installation & Q&A Guide](https://renoceros.github.io/bettergitgraph/#install-guide)**.*
 
 ### Method 1: VS Code Marketplace (Recommended)
 1. Open Visual Studio Code.
@@ -192,7 +199,7 @@ BetterGitGraph is built strictly as a **local-first** developer tool:
 1. Download the latest `bettergitgraph-x.x.x.vsix` from [GitHub Releases](https://github.com/Renoceros/bettergitgraph/releases).
 2. Install via terminal:
    ```bash
-   code --install-extension bettergitgraph-1.2.6.vsix
+   code --install-extension bettergitgraph-1.3.2.vsix
    ```
    *(Or in VS Code: Extensions View $\rightarrow$ `...` menu $\rightarrow$ **Install from VSIX...**)*
 
