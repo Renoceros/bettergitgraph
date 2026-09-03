@@ -8,3 +8,5 @@ out/
 .gemini/
 dockerfile
 test-fixtures/
+/scripts/
+/temp/
