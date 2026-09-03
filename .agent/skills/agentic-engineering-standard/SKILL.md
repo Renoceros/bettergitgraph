@@ -20,7 +20,7 @@ This specification defines the universal, domain-agnostic operational standard f
 |  [ 1. Ingestion & Alignment ]       Receive user intent & scope boundaries    |
 |             │                                                                 |
 |             ▼                                                                 |
-|  [ 2. Progressive Planning ]        Strategic Roadmap -> Tactical Plan        |
+|  [ 2. Progressive Planning ]        PRD -> Tech Docs -> Roadmap -> Step Plan  |
 |             │                       (Artifact Review & Approval)              |
 |             ▼                                                                 |
 |  [ 3. Atomic Implementation ]       Isolated code modifications               |
@@ -44,7 +44,7 @@ This specification defines the universal, domain-agnostic operational standard f
 ### 1.1 The Strict Zero-Emoji Rule
 * **Core Rule:** Never emit emoji characters (Unicode ranges `\U00010000-\U0010ffff`, `\u2600-\u27bf`, `\u2300-\u23ff`, etc.) in:
   - User interface labels, buttons, dialogs, tooltips, and status indicators.
-  - Markdown documentation files (`README.md`, `CHANGELOG.md`, design specs, landing pages).
+  - Markdown documentation files (`README.md`, `CHANGELOG.md`, `PRD.md`, `TECH_DOCS.md`, landing pages).
   - Code comments, docstrings, console logs, and exception strings.
   - Git commit messages, pull request titles, and branch descriptions.
 * **Approved Replacement Styles:**
@@ -59,27 +59,62 @@ This specification defines the universal, domain-agnostic operational standard f
 
 ---
 
-## 2. The Artifact-Driven Planning Protocol
+## 2. The Artifact-Driven Planning Protocol & Specification Hierarchy
 
-Autonomous agents must never write speculative code without an approved architectural plan. Every feature or refactor follows the two-tier planning protocol:
+Autonomous agents must never write speculative code without an approved architectural plan. Every project establishes a clear 4-tier specification hierarchy:
 
-### 2.1 Strategic Roadmap (`roadmap_vX.Y.Z.md`)
+```
++-------------------------------------------------------------------------------+
+|                      FOUR-TIER SPECIFICATION HIERARCHY                        |
++-------------------------------------------------------------------------------+
+|                                                                               |
+|  [ Tier 1: Product Requirements Document ]   --> documentation/PRD.md         |
+|  (User Personas, Problem Space, Core Goals)                                   |
+|             │                                                                 |
+|             ▼                                                                 |
+|  [ Tier 2: Technical Architecture Spec ]    --> documentation/TECH_DOCS.md   |
+|  (Subsystem Topology, IPC Protocols, DTOs)                                    |
+|             │                                                                 |
+|             ▼                                                                 |
+|  [ Tier 3: Strategic Version Roadmap ]       --> roadmap_vX.Y.Z.md             |
+|  (Release Milestones, Feature Grouping)                                       |
+|             │                                                                 |
+|             ▼                                                                 |
+|  [ Tier 4: Tactical Step-by-Step Plan ]      --> plan_vX_Y_Z.md                |
+|  (Atomic Files, Phases, Quality Gates)                                        |
+|                                                                               |
++-------------------------------------------------------------------------------+
+```
+
+### 2.1 Product Requirements Document (`documentation/PRD.md`)
+The living business and product North Star:
+1. **Problem Statement:** Real-world developer pain points and limitations of existing alternatives.
+2. **Vision & Goals Table:** Numbered, measurable goals (`G1`, `G2`...).
+3. **Target Personas:** Detailed user personas (e.g., Novice/Beginner, Daily Developer, Team Lead/Auditor).
+4. **Feature Requirements Matrix:** Prioritized capabilities (P0 Must-Have, P1 Should-Have, P2 Nice-to-Have).
+5. **Non-Functional Requirements:** Local privacy, latency thresholds, accessibility, and platform targets.
+
+### 2.2 Technical Documentation (`documentation/TECH_DOCS.md`)
+The authoritative software engineering architecture companion:
+1. **System Architecture Overview:** Subsystem diagrams, execution context separation (e.g., Extension Host vs. Webview Sandbox).
+2. **Tech Stack & Dependencies:** Justification for every core runtime library and framework.
+3. **Subsystem Deep Dives:** Internal mechanics of every data layer, layout engine, and bridge.
+4. **IPC / Message Protocol:** Complete schema contracts for asynchronous message passing.
+5. **Data Models & State Management:** Core entity types, immutability guarantees, and store structures.
+6. **Security & Sandboxing:** Content Security Policies (CSP), input sanitization, and path boundary validation.
+
+### 2.3 Strategic Roadmap (`roadmap_vX.Y.Z.md`)
 * High-level epic tracking document outlining:
-  - Problem statement & success metrics.
-  - Feature capability breakdown across sub-releases.
-  - Non-functional requirements (performance benchmarks, security boundaries).
+  - Feature capability breakdown across minor and patch sub-releases.
+  - Cross-module integration milestones.
 
-### 2.2 Tactical Implementation Plan (`plan_vX_Y_Z.md`)
+### 2.4 Tactical Implementation Plan (`plan_vX_Y_Z.md`)
 * Executable step-by-step document structured as follows:
   1. **User Request & Scope:** Exact intent and bounded constraints.
   2. **Affected Files & Architecture:** List of files to create, edit, or delete with rationales.
   3. **Implementation Phases:** Chronological, atomic code changes grouped into testable steps.
   4. **Quality Gates & Verification Strategy:** Exact terminal commands (`npm run test`, `pytest`, `cargo test`) and expected test outputs.
   5. **Rollback & Edge Case Mitigation:** Failure handling and fallback strategies.
-
-```
-[ User Request ] -> [ Create Plan Artifact ] -> [ Request Human Feedback ] -> [ Execute Code ]
-```
 
 ---
 
@@ -99,6 +134,9 @@ project-root/
 ├── docs/                        # Self-contained landing page & interactive user guides
 │   ├── index.html               # Zero-dependency interactive web documentation
 │   └── resources/               # High-DPI diagram assets, vector logos & media
+├── documentation/               # Living project specifications
+│   ├── PRD.md                   # Product Requirements Document
+│   └── TECH_DOCS.md             # Technical Architecture Specification
 ├── src/
 │   ├── core/                    # Pure, platform-agnostic business logic & algorithms
 │   ├── host/                    # Host integration layer (Node, Electron, VS Code, CLI)
